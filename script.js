@@ -194,7 +194,14 @@ async function handleRegister(e) {
     submitBtn.disabled = true;
     
     try {
-        // 创建新用户（后端API会检查用户是否已存在）
+        // 先检查用户是否已存在
+        const userExists = await checkUserExists(username);
+        if (userExists) {
+            showMessage('用户名已存在，请选择其他用户名', 'error');
+            return;
+        }
+        
+        // 创建新用户
         const newUser = await createUser(username, email, password);
         
         if (newUser) {
