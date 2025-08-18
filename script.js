@@ -1,3 +1,32 @@
+// 数字时钟功能
+function updateClock() {
+    const now = new Date();
+    
+    // 格式化时间
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const seconds = now.getSeconds().toString().padStart(2, '0');
+    const timeString = `${hours}:${minutes}:${seconds}`;
+    
+    // 格式化日期 - 中文版本
+    const days = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+    const months = ['1月', '2月', '3月', '4月', '5月', '6月', 
+                   '7月', '8月', '9月', '10月', '11月', '12月'];
+    
+    const dayName = days[now.getDay()];
+    const monthName = months[now.getMonth()];
+    const date = now.getDate();
+    const year = now.getFullYear();
+    const dateString = `${year}年${monthName}${date}日 ${dayName}`;
+    
+    // 更新DOM元素
+    const timeElement = document.getElementById('current-time');
+    const dateElement = document.getElementById('current-date');
+    
+    if (timeElement) timeElement.textContent = timeString;
+    if (dateElement) dateElement.textContent = dateString;
+}
+
 // 维格表配置 - 请替换为您的实际配置
 const VIKA_CONFIG = {
     // 维格表配置 - 请替换为您的实际配置
@@ -5,6 +34,39 @@ const VIKA_CONFIG = {
     datasheetId: 'dstj2Cp49ca1bXcfZ6', // 替换为您的数据表ID
     baseUrl: 'https://vika.cn/fusion/v1'
 };
+
+// 测试维格表连接
+async function testVikaConnection() {
+    if (!isVikaConfigured) {
+        console.log('维格表未配置，跳过连接测试');
+        return false;
+    }
+    
+    try {
+        // 通过代理服务器测试维格表连接
+        const response = await fetch('http://localhost:3001/api/test', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            console.log('✅ 维格表连接成功！', data.message);
+            return true;
+        } else {
+            console.error('❌ 维格表连接失败，状态码:', response.status);
+            console.log('💡 将使用本地存储作为备用方案');
+            return false;
+        }
+    } catch (error) {
+        console.error('❌ 维格表代理服务器连接失败:', error.message);
+        console.log('💡 请确保代理服务器正在运行 (npm start)');
+        console.log('💡 将使用本地存储作为备用方案');
+        return false;
+    }
+}
 
 // 检查维格表配置是否有效
 const isVikaConfigured = VIKA_CONFIG.apiToken !== 'YOUR_VIKA_API_TOKEN' && 
@@ -17,7 +79,7 @@ if (isVikaConfigured) {
 }
 
 // DOM元素变量声明
-let loginForm, registerForm, loginLink, registerLink, welcomeSection, welcomeMessage, logoutBtn, loginSection;
+let loginForm, registerForm;
 
 // 使用Web Crypto API进行密码加密
 async function hashPassword(password) {
@@ -35,8 +97,74 @@ async function verifyPassword(password, hashedPassword) {
 }
 
 // 页面加载完成后初始化
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     console.log('页面加载完成，使用Web Crypto API进行密码加密');
+    
+    // 仅在配置了维格表且需要时才测试连接
+    if (isVikaConfigured) {
+        console.log('维格表已配置，将在需要时测试连接');
+    } else {
+        console.log('维格表未配置，使用本地存储功能');
+    }
+    
+    // 启动数字时钟
+    updateClock(); // 立即更新一次
+    setInterval(updateClock, 1000); // 每秒更新一次
+    
+    // 登录按钮点击事件
+    const loginToggleBtn = document.getElementById('loginToggleBtn');
+    const loginOverlay = document.getElementById('loginOverlay');
+    const mainClockSection = document.querySelector('.main-clock-section');
+    
+    if (loginToggleBtn && loginOverlay && mainClockSection) {
+        loginToggleBtn.addEventListener('click', function() {
+            // 显示登录窗口，隐藏时钟
+            loginOverlay.style.display = 'flex';
+            mainClockSection.style.display = 'none';
+        });
+        
+        // 点击覆盖层背景关闭登录窗口
+        loginOverlay.addEventListener('click', function(e) {
+            if (e.target === loginOverlay) {
+                // 隐藏登录窗口，显示时钟
+                loginOverlay.style.display = 'none';
+                mainClockSection.style.display = 'flex';
+            }
+        });
+    }
+    
+    // 添加时钟和登录窗口的交互效果
+    setTimeout(() => {
+        // 时钟点击效果
+        const clockDisplay = document.querySelector('.clock-display');
+        if (clockDisplay) {
+            clockDisplay.addEventListener('click', function() {
+                this.style.transform = 'scale(1.05)';
+                setTimeout(() => {
+                    this.style.transform = 'scale(1)';
+                }, 200);
+            });
+        }
+        
+        // 登录窗口动画
+        const loginContainer = document.querySelector('.login-container');
+        if (loginContainer) {
+            loginContainer.style.opacity = '0';
+            loginContainer.style.transform = 'translateY(20px)';
+            
+            setTimeout(() => {
+                loginContainer.style.transition = 'all 0.6s ease';
+                loginContainer.style.opacity = '1';
+                loginContainer.style.transform = 'translateY(0)';
+            }, 300);
+        }
+        
+        // 登录表单处理统一使用handleLogin函数
+        // 移除重复的登录处理逻辑，统一在bindEventListeners中处理
+    }, 100);
+    
+    // 初始化星空动画（如果存在画布）
+    initStarfield();
     
     // DOM元素获取
     loginForm = document.getElementById('loginForm');
@@ -61,73 +189,183 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // 检查是否已登录
-    checkLoginStatus();
+    // 移除了checkLoginStatus调用，因为现在登录状态通过登录表单直接处理
     
     // 绑定事件监听器
     bindEventListeners();
+    
+    // 绑定创建账户链接事件
+    const createAccountLink = document.getElementById('createAccountLink');
+    if (createAccountLink) {
+        createAccountLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            showRegisterForm();
+        });
+        console.log('创建账户链接事件已绑定');
+    }
+    
+    // 绑定返回登录链接事件
+    const backToLoginLink = document.getElementById('backToLoginLink');
+    if (backToLoginLink) {
+        backToLoginLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            showLoginForm();
+        });
+        console.log('返回登录链接事件已绑定');
+    }
+    
+    // 注册表单提交事件已在bindEventListeners()中处理
 });
 
+// 简易星空动画
+function initStarfield() {
+    const canvas = document.getElementById('starfield');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+        const rect = canvas.parentElement.getBoundingClientRect();
+        canvas.width = Math.max(300, Math.floor(rect.width));
+        canvas.height = Math.max(240, Math.floor(rect.height));
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const stars = Array.from({length: 120}, () => ({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        z: Math.random() * 0.7 + 0.3, // 速度/亮度
+        r: Math.random() * 1.4 + 0.3
+    }));
+
+    function step() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (const s of stars) {
+            // 漂移
+            s.x -= s.z * 0.6;
+            s.y += Math.sin((s.x + s.y) * 0.002) * 0.2;
+            // 循环
+            if (s.x < -5) {
+                s.x = canvas.width + Math.random() * 20;
+                s.y = Math.random() * canvas.height;
+                s.z = Math.random() * 0.7 + 0.3;
+            }
+            const alpha = 0.6 + s.z * 0.4;
+            ctx.beginPath();
+            ctx.fillStyle = `rgba(255,255,255,${alpha.toFixed(2)})`;
+            ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+}
 // 绑定事件监听器
 function bindEventListeners() {
     console.log('开始绑定事件监听器');
     
-    // 检查元素是否存在
-    if (!loginForm || !registerForm || !loginLink || !registerLink) {
-        console.error('关键DOM元素缺失，无法绑定事件');
-        return;
+    // 只在元素存在时绑定事件
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
+        console.log('登录表单事件已绑定');
     }
     
-    // 登录表单提交
-    loginForm.addEventListener('submit', handleLogin);
-    console.log('登录表单事件已绑定');
-    
-    // 注册表单提交
-    registerForm.addEventListener('submit', handleRegister);
-    console.log('注册表单事件已绑定');
+    if (registerForm) {
+        registerForm.addEventListener('submit', handleRegister);
+        console.log('注册表单事件已绑定');
+    }
     
     // 切换到注册表单
-    registerLink.addEventListener('click', function(e) {
-        console.log('注册链接被点击');
-        e.preventDefault();
-        showRegisterForm();
-    });
-    console.log('注册链接事件已绑定');
+    const registerLink = document.querySelector('.create-account-link');
+    if (registerLink) {
+        registerLink.addEventListener('click', function(e) {
+            console.log('注册链接被点击');
+            e.preventDefault();
+            showRegisterForm();
+        });
+        console.log('注册链接事件已绑定');
+    }
     
     // 切换到登录表单
-    loginLink.addEventListener('click', function(e) {
-        console.log('登录链接被点击');
-        e.preventDefault();
-        showLoginForm();
-    });
-    console.log('登录链接事件已绑定');
-    
-    // 退出登录
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', handleLogout);
-        console.log('退出按钮事件已绑定');
+    const loginLink = document.querySelector('.back-to-login');
+    if (loginLink) {
+        loginLink.addEventListener('click', function(e) {
+            console.log('登录链接被点击');
+            e.preventDefault();
+            showLoginForm();
+        });
+        console.log('登录链接事件已绑定');
     }
+    
+    // 密码显示/隐藏按钮事件
+    const passwordToggles = document.querySelectorAll('.password-toggle');
+    passwordToggles.forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            togglePasswordVisibility(this.dataset.target);
+        });
+    });
+    console.log('密码显示按钮事件已绑定');
     
     console.log('所有事件监听器绑定完成');
 }
 
 // 显示注册表单
+// 切换表单显示
+function toggleForm(showRegister) {
+    const loginFormContainer = document.getElementById('loginFormContainer');
+    const registerFormContainer = document.getElementById('registerFormContainer');
+    
+    if (loginFormContainer && registerFormContainer) {
+        loginFormContainer.style.display = showRegister ? 'none' : 'block';
+        registerFormContainer.style.display = showRegister ? 'block' : 'none';
+    }
+    
+    if (loginForm && registerForm) {
+        loginForm.style.display = showRegister ? 'none' : 'block';
+        registerForm.style.display = showRegister ? 'block' : 'none';
+    }
+}
+
+// 显示注册表单
 function showRegisterForm() {
-    loginForm.style.display = 'none';
-    registerForm.style.display = 'block';
+    toggleForm(true);
 }
 
 // 显示登录表单
 function showLoginForm() {
-    registerForm.style.display = 'none';
-    loginForm.style.display = 'block';
+    toggleForm(false);
+}
+
+// 切换密码可见性
+function togglePasswordVisibility(targetId) {
+    const passwordInput = document.getElementById(targetId);
+    const toggleButton = document.querySelector(`[data-target="${targetId}"]`);
+    const eyeIcon = toggleButton.querySelector('.eye-icon');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        // 更改为闭眼图标
+        eyeIcon.innerHTML = `
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+        `;
+    } else {
+        passwordInput.type = 'password';
+        // 更改为睁眼图标
+        eyeIcon.innerHTML = `
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+        `;
+    }
 }
 
 // 处理登录
 async function handleLogin(e) {
     e.preventDefault();
     
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
+    const username = document.getElementById('username')?.value;
+    const password = document.getElementById('password')?.value;
     
     if (!username || !password) {
         showMessage('请填写用户名和密码', 'error');
@@ -135,7 +373,7 @@ async function handleLogin(e) {
     }
     
     // 显示加载状态
-    const submitBtn = loginForm.querySelector('button[type="submit"]');
+    const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
     submitBtn.innerHTML = '<span class="loading"></span> 登录中...';
     submitBtn.disabled = true;
@@ -147,8 +385,17 @@ async function handleLogin(e) {
         if (user) {
             // 登录成功
             localStorage.setItem('currentUser', JSON.stringify(user));
-            showWelcomeSection(user);
             showMessage('登录成功！', 'success');
+            
+            // 隐藏登录窗口，显示时钟
+            const loginOverlay = document.getElementById('loginOverlay');
+            const mainClockSection = document.querySelector('.main-clock-section');
+            if (loginOverlay && mainClockSection) {
+                loginOverlay.style.display = 'none';
+                mainClockSection.style.display = 'flex';
+            }
+            
+            console.log('用户登录成功:', user);
         } else {
             showMessage('用户名或密码错误', 'error');
         }
@@ -169,7 +416,7 @@ async function handleRegister(e) {
     const username = document.getElementById('regUsername').value;
     const email = document.getElementById('regEmail').value;
     const password = document.getElementById('regPassword').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
+    const confirmPassword = document.getElementById('regConfirmPassword').value;
     
     // 表单验证
     if (!username || !email || !password || !confirmPassword) {
@@ -194,25 +441,22 @@ async function handleRegister(e) {
     submitBtn.disabled = true;
     
     try {
-        // 先检查用户是否已存在
-        const userExists = await checkUserExists(username);
-        if (userExists) {
-            showMessage('用户名已存在，请选择其他用户名', 'error');
-            return;
-        }
-        
         // 创建新用户
-        const newUser = await createUser(username, email, password);
+        const result = await createUser(username, email, password);
         
-        if (newUser) {
-            registerForm.reset();
+        if (result.success) {
+            // 清空表单
+            document.getElementById('regUsername').value = '';
+            document.getElementById('regEmail').value = '';
+            document.getElementById('regPassword').value = '';
+            document.getElementById('regConfirmPassword').value = '';
             // 先显示成功消息，然后延迟切换到登录界面
             showMessage('注册成功！请登录', 'success');
             setTimeout(() => {
                 showLoginForm();
             }, 1500); // 1.5秒后切换到登录界面，让用户看到成功消息
         } else {
-            showMessage('注册失败，请稍后重试', 'error');
+            showMessage(result.message || '注册失败，请稍后重试', 'error');
         }
     } catch (error) {
         console.error('注册错误:', error);
@@ -234,31 +478,25 @@ async function validateUser(username, password) {
     try {
         // 优先尝试维格表API验证
         if (isVikaConfigured) {
-            const response = await fetch(`${VIKA_CONFIG.baseUrl}/datasheets/${VIKA_CONFIG.datasheetId}/records`, {
-                method: 'GET',
+            const response = await fetch('http://localhost:3001/api/users/validate', {
+                method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${VIKA_CONFIG.apiToken}`,
                     'Content-Type': 'application/json'
-                }
+                },
+                body: JSON.stringify({
+                    username: username,
+                    password: password
+                })
             });
             
             if (response.ok) {
                 const data = await response.json();
-                const users = data.data.records;
-                
-                for (const record of users) {
-                    const userData = record.fields;
-                    if (userData.username === username) {
-                        // 验证密码
-                        const isPasswordValid = await verifyPassword(password, userData.password);
-                        if (isPasswordValid) {
-                            return {
-                                id: record.recordId,
-                                username: userData.username,
-                                email: userData.email
-                            };
-                        }
-                    }
+                if (data.success) {
+                    return {
+                        id: data.user.id,
+                        username: data.user.username,
+                        email: data.user.email
+                    };
                 }
             }
         }
@@ -290,18 +528,16 @@ async function checkUserExists(username) {
     try {
         // 优先尝试维格表API检查用户
         if (isVikaConfigured) {
-            const response = await fetch(`${VIKA_CONFIG.baseUrl}/datasheets/${VIKA_CONFIG.datasheetId}/records`, {
+            const response = await fetch(`http://localhost:3001/api/users/check/${username}`, {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${VIKA_CONFIG.apiToken}`,
                     'Content-Type': 'application/json'
                 }
             });
             
             if (response.ok) {
                 const data = await response.json();
-                const users = data.data.records;
-                return users.some(record => record.fields.username === username);
+                return data.exists;
             }
         }
     } catch (error) {
@@ -316,32 +552,36 @@ async function checkUserExists(username) {
 // 创建用户（通过后端API）
 async function createUser(username, email, password) {
     try {
+        // 检查用户是否已存在
+        const userExists = await checkUserExists(username);
+        if (userExists) {
+            return {
+                success: false,
+                message: '用户名已存在，请选择其他用户名'
+            };
+        }
+        
         // 优先尝试维格表API创建用户
         if (isVikaConfigured) {
             const hashedPassword = await hashPassword(password);
-            const currentTime = new Date().toISOString();
             
-            const response = await fetch(`${VIKA_CONFIG.baseUrl}/datasheets/${VIKA_CONFIG.datasheetId}/records`, {
+            const response = await fetch('http://localhost:3001/api/users', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${VIKA_CONFIG.apiToken}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    records: [{
-                        fields: {
-                            username: username,
-                            email: email,
-                            password: hashedPassword,
-                            created_at: currentTime
-                        }
-                    }]
+                    username: username,
+                    email: email,
+                    password: hashedPassword
                 })
             });
             
             if (response.ok) {
                 const data = await response.json();
+                console.log('维格表创建用户成功:', data);
                 return {
+                    success: true,
                     username: username,
                     email: email
                 };
@@ -349,12 +589,22 @@ async function createUser(username, email, password) {
                 const errorData = await response.json();
                 throw new Error(errorData.message || '维格表创建用户失败');
             }
+        } else {
+            // 使用本地存储
+            const hashedPassword = await hashPassword(password);
+            const result = createUserLocal(username, email, hashedPassword);
+            return {
+                success: true,
+                username: result.username,
+                email: result.email
+            };
         }
     } catch (error) {
         console.error('创建用户失败:', error);
-        // 如果维格表API失败，使用本地存储作为备用
-        const hashedPassword = await hashPassword(password);
-        return createUserLocal(username, email, hashedPassword);
+        return {
+            success: false,
+            message: error.message || '创建用户失败，请稍后重试'
+        };
     }
 }
 
@@ -376,31 +626,9 @@ function createUserLocal(username, email, hashedPassword) {
 }
 
 // 检查登录状态
-function checkLoginStatus() {
-    const currentUser = localStorage.getItem('currentUser');
-    if (currentUser) {
-        const user = JSON.parse(currentUser);
-        showWelcomeSection(user);
-    }
-}
+// 移除了不再使用的checkLoginStatus、showWelcomeSection和handleLogout函数
 
-// 显示欢迎界面
-function showWelcomeSection(user) {
-    loginSection.style.display = 'none';
-    welcomeSection.style.display = 'block';
-    welcomeMessage.textContent = `欢迎回来，${user.username}！`;
-}
-
-// 处理退出登录
-function handleLogout() {
-    localStorage.removeItem('currentUser');
-    welcomeSection.style.display = 'none';
-    loginSection.style.display = 'block';
-    loginForm.reset();
-    registerForm.reset();
-    showLoginForm();
-    showMessage('已成功退出登录', 'success');
-}
+// 移除了未使用的handleCreateAccount函数，现在统一使用handleRegister
 
 // 显示消息
 function showMessage(message, type) {
