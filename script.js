@@ -19,8 +19,25 @@ if (isVikaConfigured) {
 // DOM元素变量声明
 let loginForm, registerForm, loginLink, registerLink, welcomeSection, welcomeMessage, logoutBtn, loginSection;
 
+// 使用Web Crypto API进行密码加密
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password + 'salt123'); // 添加简单的盐值
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// 验证密码
+async function verifyPassword(password, hashedPassword) {
+    const inputHash = await hashPassword(password);
+    return inputHash === hashedPassword;
+}
+
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('页面加载完成，使用Web Crypto API进行密码加密');
+    
     // DOM元素获取
     loginForm = document.getElementById('loginForm');
     registerForm = document.getElementById('registerForm');
@@ -226,7 +243,8 @@ async function validateUser(username, password) {
                     const userData = record.fields;
                     if (userData.username === username) {
                         // 验证密码
-                        if (bcrypt.compareSync(password, userData.password)) {
+                        const isPasswordValid = await verifyPassword(password, userData.password);
+                        if (isPasswordValid) {
                             return {
                                 id: record.recordId,
                                 username: userData.username,
@@ -242,16 +260,19 @@ async function validateUser(username, password) {
     }
     
     // 使用本地存储作为备用
-    return validateUserLocal(username, password);
+    return await validateUserLocal(username, password);
 }
 
 // 本地存储模拟用户验证（用于演示）
-function validateUserLocal(username, password) {
+async function validateUserLocal(username, password) {
     const users = JSON.parse(localStorage.getItem('users') || '[]');
     const user = users.find(u => u.username === username);
     
-    if (user && bcrypt.compareSync(password, user.password)) {
-        return user;
+    if (user) {
+        const isPasswordValid = await verifyPassword(password, user.password);
+        if (isPasswordValid) {
+            return user;
+        }
     }
     
     return null;
@@ -290,7 +311,7 @@ async function createUser(username, email, password) {
     try {
         // 优先尝试维格表API创建用户
         if (isVikaConfigured) {
-            const hashedPassword = bcrypt.hashSync(password, 10);
+            const hashedPassword = await hashPassword(password);
             const currentTime = new Date().toISOString();
             
             const response = await fetch(`${VIKA_CONFIG.baseUrl}/datasheets/${VIKA_CONFIG.datasheetId}/records`, {
@@ -325,7 +346,7 @@ async function createUser(username, email, password) {
     } catch (error) {
         console.error('创建用户失败:', error);
         // 如果维格表API失败，使用本地存储作为备用
-        const hashedPassword = bcrypt.hashSync(password, 10);
+        const hashedPassword = await hashPassword(password);
         return createUserLocal(username, email, hashedPassword);
     }
 }
