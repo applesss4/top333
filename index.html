@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网站首页 - 用户登录</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>欢迎来到我的网站</h1>
+        </header>
+        
+        <main>
+            <div class="login-section">
+                <div class="login-form-container">
+                    <h2>用户登录</h2>
+                    <form id="loginForm" class="login-form">
+                        <div class="form-group">
+                            <label for="username">用户名:</label>
+                            <input type="text" id="username" name="username" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="password">密码:</label>
+                            <input type="password" id="password" name="password" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <button type="submit" class="login-btn">登录</button>
+                        </div>
+                        
+                        <div class="form-links">
+                            <a href="#" id="registerLink">还没有账号？点击注册</a>
+                        </div>
+                    </form>
+                    
+                    <!-- 注册表单 (默认隐藏) -->
+                    <form id="registerForm" class="register-form" style="display: none;">
+                        <h2>用户注册</h2>
+                        <div class="form-group">
+                            <label for="regUsername">用户名:</label>
+                            <input type="text" id="regUsername" name="regUsername" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regEmail">邮箱:</label>
+                            <input type="email" id="regEmail" name="regEmail" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="regPassword">密码:</label>
+                            <input type="password" id="regPassword" name="regPassword" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="confirmPassword">确认密码:</label>
+                            <input type="password" id="confirmPassword" name="confirmPassword" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <button type="submit" class="register-btn">注册</button>
+                        </div>
+                        
+                        <div class="form-links">
+                            <a href="#" id="loginLink">已有账号？点击登录</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 登录成功后显示的内容区域 -->
+            <div id="welcomeSection" class="welcome-section" style="display: none;">
+                <h2>欢迎回来！</h2>
+                <p id="welcomeMessage"></p>
+                <button id="logoutBtn" class="logout-btn">退出登录</button>
+            </div>
+        </main>
+        
+        <footer>
+            <p>&copy; 2024 我的网站. 保留所有权利.</p>
+        </footer>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
