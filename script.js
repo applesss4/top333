@@ -1,10 +1,20 @@
 // 维格表配置 - 请替换为您的实际配置
 const VIKA_CONFIG = {
-    // 请在维格表官网获取您的API Token和数据表ID
+    // 维格表配置 - 请替换为您的实际配置
     apiToken: 'uskPGemFgQLFNdWMMNm8KRL', // 替换为您的维格表API Token
     datasheetId: 'dstj2Cp49ca1bXcfZ6', // 替换为您的数据表ID
     baseUrl: 'https://vika.cn/fusion/v1'
 };
+
+// 检查维格表配置是否有效
+const isVikaConfigured = VIKA_CONFIG.apiToken !== 'YOUR_VIKA_API_TOKEN' && 
+                        VIKA_CONFIG.datasheetId !== 'YOUR_DATASHEET_ID';
+
+if (isVikaConfigured) {
+    console.log('维格表配置已启用，将使用维格表存储数据');
+} else {
+    console.log('维格表未配置，将使用本地存储模拟数据库功能');
+}
 
 // DOM元素变量声明
 let loginForm, registerForm, loginLink, registerLink, welcomeSection, welcomeMessage, logoutBtn, loginSection;
@@ -198,34 +208,41 @@ async function handleRegister(e) {
 // 验证用户登录（通过后端API）
 async function validateUser(username, password) {
     try {
-        const response = await fetch('http://localhost:3001/api/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                username: username,
-                password: password
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            return {
-                id: data.user.id,
-                username: data.user.username,
-                email: data.user.email
-            };
-        } else {
-            return null;
+        // 优先尝试维格表API验证
+        if (isVikaConfigured) {
+            const response = await fetch(`${VIKA_CONFIG.baseUrl}/datasheets/${VIKA_CONFIG.datasheetId}/records`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${VIKA_CONFIG.apiToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const users = data.data.records;
+                
+                for (const record of users) {
+                    const userData = record.fields;
+                    if (userData.username === username) {
+                        // 验证密码
+                        if (bcrypt.compareSync(password, userData.password)) {
+                            return {
+                                id: record.recordId,
+                                username: userData.username,
+                                email: userData.email
+                            };
+                        }
+                    }
+                }
+            }
         }
-        
     } catch (error) {
-        console.error('验证用户失败:', error);
-        // 如果后端API失败，使用本地存储作为备用
-        return validateUserLocal(username, password);
+        console.error('维格表验证失败:', error);
     }
+    
+    // 使用本地存储作为备用
+    return validateUserLocal(username, password);
 }
 
 // 本地存储模拟用户验证（用于演示）
@@ -243,67 +260,71 @@ function validateUserLocal(username, password) {
 // 检查用户是否存在
 async function checkUserExists(username) {
     try {
-        // 如果没有配置维格表，使用本地存储模拟
-        if (VIKA_CONFIG.apiToken === 'YOUR_VIKA_API_TOKEN') {
-            const users = JSON.parse(localStorage.getItem('users') || '[]');
-            return users.some(u => u.username === username);
-        }
-        
-        const response = await fetch(`${VIKA_CONFIG.baseUrl}/datasheets/${VIKA_CONFIG.datasheetId}/records`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${VIKA_CONFIG.apiToken}`,
-                'Content-Type': 'application/json'
+        // 优先尝试维格表API检查用户
+        if (isVikaConfigured) {
+            const response = await fetch(`${VIKA_CONFIG.baseUrl}/datasheets/${VIKA_CONFIG.datasheetId}/records`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${VIKA_CONFIG.apiToken}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                const users = data.data.records;
+                return users.some(record => record.fields.username === username);
             }
-        });
-        
-        if (!response.ok) {
-            throw new Error('网络请求失败');
         }
-        
-        const data = await response.json();
-        const users = data.data.records;
-        
-        return users.some(record => record.fields.username === username);
-        
     } catch (error) {
-        console.error('检查用户失败:', error);
-        throw error;
+        console.error('维格表检查用户失败:', error);
     }
+    
+    // 使用本地存储作为备用
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    return users.some(user => user.username === username);
 }
 
 // 创建用户（通过后端API）
 async function createUser(username, email, password) {
     try {
-        const response = await fetch('http://localhost:3001/api/register', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                username: username,
-                email: email,
-                password: password
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            return {
-                username: data.user.username,
-                email: data.user.email
-            };
-        } else {
-            // 抛出包含后端错误消息的异常
-            const error = new Error(data.message || '注册失败');
-            error.isBackendError = true;
-            throw error;
+        // 优先尝试维格表API创建用户
+        if (isVikaConfigured) {
+            const hashedPassword = bcrypt.hashSync(password, 10);
+            const currentTime = new Date().toISOString();
+            
+            const response = await fetch(`${VIKA_CONFIG.baseUrl}/datasheets/${VIKA_CONFIG.datasheetId}/records`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${VIKA_CONFIG.apiToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    records: [{
+                        fields: {
+                            username: username,
+                            email: email,
+                            password: hashedPassword,
+                            created_at: currentTime
+                        }
+                    }]
+                })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                return {
+                    username: username,
+                    email: email
+                };
+            } else {
+                const errorData = await response.json();
+                throw new Error(errorData.message || '维格表创建用户失败');
+            }
         }
-        
     } catch (error) {
         console.error('创建用户失败:', error);
-        // 如果后端API失败，使用本地存储作为备用
+        // 如果维格表API失败，使用本地存储作为备用
         const hashedPassword = bcrypt.hashSync(password, 10);
         return createUserLocal(username, email, hashedPassword);
     }
