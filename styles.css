@@ -300,73 +300,70 @@ body {
 }
 
 /* 响应式设计 */
-@media (max-width: 768px) {
-    .main-content {
-        padding: 15px;
-        min-height: calc(100vh - 160px);
+@media (max-width: 1200px) {
+    .hero-section {
+        grid-template-columns: 1fr;
+        gap: 40px;
+        text-align: center;
     }
     
-    .main-clock-section {
-        max-width: 100%;
-        padding: 0 10px;
+    .main-title {
+        font-size: 3.5rem;
+        text-align: center;
     }
     
-    .digital-clock {
-        padding: 30px 40px;
-        max-width: 100%;
-        margin: 0 10px;
-    }
-    
-    .time {
-        font-size: 3rem;
-    }
-    
-    .date {
-        font-size: 1.2rem;
-    }
-    
-    .login-container {
-        width: calc(100vw - 40px);
-        max-width: 350px;
-        padding: 25px;
-        margin: 15px auto;
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        z-index: 1000;
-    }
-    
-    .login-form h3 {
-        font-size: 1.4rem;
-        margin-bottom: 25px;
-    }
-    
-    .input-group {
-        margin-bottom: 18px;
-    }
-    
-    .input-group input {
-        padding: 12px 15px;
-        font-size: 1rem;
-    }
-    
-    .login-btn {
-        padding: 12px;
-        font-size: 1rem;
-        margin-bottom: 18px;
+    .title-section {
+        justify-content: center;
     }
 }
 
-@media (max-width: 480px) {
-    .main-content {
-        padding: 10px;
-        min-height: calc(100vh - 140px);
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        gap: 20px;
+        text-align: center;
     }
     
-    .digital-clock {
-        padding: 25px 30px;
-        margin: 0 5px;
+    .logo h1 {
+        font-size: 2rem;
+        letter-spacing: 1px;
+    }
+    
+    .logo p {
+        font-size: 0.8rem;
+    }
+    
+    .logo .location {
+        font-size: 0.7rem;
+    }
+    
+    .nav {
+        gap: 20px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .nav a {
+        font-size: 0.9rem;
+    }
+    
+    .main-title {
+        font-size: 2.8rem;
+    }
+    
+    .main-content {
+        padding: 0 20px;
+    }
+    
+    /* 移动端时钟样式优化 */
+    .main-clock-section {
+        min-height: 300px;
+        padding: 20px 10px;
+    }
+    
+    .clock-display {
+        padding: 20px 30px;
+        min-width: 280px;
         border-radius: 15px;
     }
     
@@ -376,65 +373,221 @@ body {
     }
     
     .date {
-        font-size: 1.1rem;
+        font-size: 1rem;
     }
     
+    /* 移动端登录表单优化 */
     .login-container {
-        width: calc(100vw - 30px);
-        max-width: 320px;
+        width: 95vw;
+        max-width: 400px;
         padding: 20px;
-        margin: 10px auto;
+        margin: 10px;
+        border-radius: 10px;
     }
     
-    .login-form h3 {
+    .login-form h3,
+    .register-form h3 {
         font-size: 1.3rem;
-        margin-bottom: 20px;
+        margin-bottom: 15px;
     }
     
     .input-group {
-        margin-bottom: 15px;
+        margin-bottom: 12px;
     }
     
     .input-group input {
-        padding: 10px 12px;
-        font-size: 0.95rem;
+        padding: 14px 16px;
+        font-size: 16px; /* 防止iOS缩放 */
+        border-radius: 10px;
+        border-width: 1px;
     }
     
     .login-btn {
-        padding: 10px;
-        font-size: 0.95rem;
-        margin-bottom: 15px;
+        padding: 14px;
+        font-size: 1.1rem;
+        border-radius: 10px;
+        margin-bottom: 12px;
+        min-height: 48px; /* 触摸友好的最小高度 */
+    }
+    
+    .login-toggle-btn {
+        padding: 12px 18px;
+        font-size: 0.9rem;
+        border-radius: 10px;
+        min-height: 44px;
+    }
+    
+    .password-toggle {
+        right: 16px;
+        padding: 8px;
+    }
+    
+    .eye-icon {
+        width: 20px;
+        height: 20px;
+    }
+    
+    .create-account-link,
+    .back-to-login-link {
+        font-size: 1rem;
+        display: inline-block;
+        padding: 8px;
+        min-height: 44px;
+        line-height: 28px;
+    }
+    
+    .footer {
+        flex-direction: column;
+        gap: 10px;
+        text-align: center;
+        padding: 10px 20px;
+        font-size: 0.8rem;
+    }
+    
+    .footer-left,
+    .footer-right {
+        gap: 15px;
+        flex-wrap: wrap;
+        justify-content: center;
     }
 }
 
-@media (max-width: 360px) {
-    .digital-clock {
-        padding: 20px 25px;
-        margin: 0;
+/* 小屏幕设备优化 */
+@media (max-width: 480px) {
+    .header {
+        padding: 10px 15px;
+    }
+    
+    .logo h1 {
+        font-size: 1.8rem;
+    }
+    
+    .nav {
+        gap: 15px;
+    }
+    
+    .nav a {
+        font-size: 0.85rem;
+        padding: 8px;
+    }
+    
+    .main-clock-section {
+        min-height: 250px;
+        padding: 15px 5px;
+    }
+    
+    .clock-display {
+        padding: 15px 20px;
+        min-width: 250px;
+        border-radius: 12px;
+    }
+    
+    .time {
+        font-size: 2rem;
+    }
+    
+    .date {
+        font-size: 0.9rem;
+    }
+    
+    .login-container {
+        width: 98vw;
+        padding: 15px;
+        margin: 5px;
+    }
+    
+    .login-form h3,
+    .register-form h3 {
+        font-size: 1.2rem;
+    }
+    
+    .input-group input {
+        padding: 12px 14px;
+    }
+    
+    .login-btn {
+        padding: 12px;
+        font-size: 1rem;
+    }
+    
+    .footer {
+        padding: 8px 15px;
+        font-size: 0.75rem;
+    }
+    
+    .footer-left,
+    .footer-right {
+        gap: 10px;
+    }
+}
+
+/* 横屏模式优化 */
+@media (max-width: 768px) and (orientation: landscape) {
+    .main-clock-section {
+        min-height: 200px;
+        padding: 10px;
+    }
+    
+    .clock-display {
+        padding: 15px 25px;
     }
     
     .time {
         font-size: 2.2rem;
     }
     
-    .date {
-        font-size: 1rem;
-    }
-    
     .login-container {
-        width: calc(100vw - 20px);
-        padding: 18px;
-        margin: 5px auto;
+        max-height: 85vh;
+        padding: 15px;
     }
     
-    .input-group input {
-        padding: 9px 10px;
-        font-size: 0.9rem;
+    .login-form h3,
+    .register-form h3 {
+        margin-bottom: 10px;
     }
     
-    .login-btn {
-        padding: 9px;
-        font-size: 0.9rem;
+    .input-group {
+        margin-bottom: 10px;
+    }
+}
+
+/* 触摸设备优化 */
+@media (hover: none) and (pointer: coarse) {
+    .nav a:hover::after {
+        width: 0;
+    }
+    
+    .nav a:active::after {
+        width: 100%;
+    }
+    
+    .login-toggle-btn:hover,
+    .login-btn:hover {
+        transform: none;
+    }
+    
+    .login-toggle-btn:active,
+    .login-btn:active {
+        transform: translateY(1px);
+        opacity: 0.9;
+    }
+    
+    .password-toggle:hover {
+        color: rgba(47, 27, 20, 0.6);
+    }
+    
+    .password-toggle:active {
+        color: #8b4513;
+    }
+    
+    .create-account-link:hover,
+    .back-to-login-link:hover {
+        color: #8b4513;
+    }
+    
+    .create-account-link:active,
+    .back-to-login-link:active {
+        color: #a0522d;
     }
 }
 
@@ -552,53 +705,39 @@ body {
     transition: transform 0.3s ease;
 }
 
-/* 响应式设计 */
-@media (max-width: 1200px) {
-    .hero-section {
-        grid-template-columns: 1fr;
-        gap: 40px;
-        text-align: center;
-    }
-    
-    .main-title {
-        font-size: 3.5rem;
-        text-align: center;
-    }
-    
-    .title-section {
-        justify-content: center;
-    }
+/* 在现有样式文件末尾添加消息样式 */
+
+/* 消息提示样式 */
+.error-message,
+.success-message {
+    padding: 12px 16px;
+    margin: 10px 0;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    animation: fadeIn 0.3s ease-in-out;
 }
 
-@media (max-width: 768px) {
-    .header {
-        flex-direction: column;
-        gap: 20px;
-        text-align: center;
+.error-message {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.success-message {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: #16a34a;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
     }
-    
-    .nav {
-        gap: 20px;
-        flex-wrap: wrap;
-        justify-content: center;
-    }
-    
-    .main-title {
-        font-size: 2.8rem;
-    }
-    
-    .main-content {
-        padding: 0 20px;
-    }
-    
-    .footer {
-        flex-direction: column;
-        gap: 10px;
-        text-align: center;
-    }
-    
-    .footer-left,
-    .footer-right {
-        gap: 15px;
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }

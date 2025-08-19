@@ -8,14 +8,20 @@
     "dev": "nodemon vika-proxy.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
+    "@vikadata/vika": "^1.4.5",
     "cors": "^2.8.5",
+    "express": "^4.18.2",
     "node-fetch": "^2.6.7"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
   },
-  "keywords": ["vika", "proxy", "cors", "api"],
+  "keywords": [
+    "vika",
+    "proxy",
+    "cors",
+    "api"
+  ],
   "author": "AI Assistant",
   "license": "MIT"
 }

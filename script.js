@@ -80,6 +80,8 @@ if (isVikaConfigured) {
 
 // DOM元素变量声明
 let loginForm, registerForm;
+// 防止重复绑定事件监听器
+let eventsBound = false;
 
 // 使用Web Crypto API进行密码加密
 async function hashPassword(password) {
@@ -263,18 +265,24 @@ function initStarfield() {
 // 绑定事件监听器
 function bindEventListeners() {
     console.log('开始绑定事件监听器');
-    
+
+    // 避免重复绑定
+    if (eventsBound) {
+        console.log('事件监听器已绑定，跳过重复绑定');
+        return;
+    }
+
     // 只在元素存在时绑定事件
     if (loginForm) {
         loginForm.addEventListener('submit', handleLogin);
         console.log('登录表单事件已绑定');
     }
-    
+
     if (registerForm) {
         registerForm.addEventListener('submit', handleRegister);
         console.log('注册表单事件已绑定');
     }
-    
+
     // 切换到注册表单
     const registerLink = document.querySelector('.create-account-link');
     if (registerLink) {
@@ -285,7 +293,7 @@ function bindEventListeners() {
         });
         console.log('注册链接事件已绑定');
     }
-    
+
     // 切换到登录表单
     const loginLink = document.querySelector('.back-to-login');
     if (loginLink) {
@@ -296,7 +304,7 @@ function bindEventListeners() {
         });
         console.log('登录链接事件已绑定');
     }
-    
+
     // 密码显示/隐藏按钮事件
     const passwordToggles = document.querySelectorAll('.password-toggle');
     passwordToggles.forEach(toggle => {
@@ -306,8 +314,9 @@ function bindEventListeners() {
         });
     });
     console.log('密码显示按钮事件已绑定');
-    
+
     console.log('所有事件监听器绑定完成');
+    eventsBound = true;
 }
 
 // 显示注册表单
@@ -360,52 +369,73 @@ function togglePasswordVisibility(targetId) {
     }
 }
 
+// 防止重复提交的标志
+let isLoggingIn = false;
+
 // 处理登录
 async function handleLogin(e) {
     e.preventDefault();
-    
-    const username = document.getElementById('username')?.value;
-    const password = document.getElementById('password')?.value;
-    
-    if (!username || !password) {
-        showMessage('请填写用户名和密码', 'error');
+
+    // 防止重复提交
+    if (isLoggingIn) {
+        console.log('登录正在进行中，忽略重复提交');
         return;
     }
-    
+    // 一旦进入提交流程，立即置为进行中，避免并发触发导致重复日志
+    isLoggingIn = true;
+
+    const username = document.getElementById('username')?.value?.trim();
+    const password = document.getElementById('password')?.value?.trim();
+
+    console.log('登录尝试:', { username: username || '(空)', hasPassword: !!password });
+
+    if (!username || !password) {
+        showMessage('请填写用户名和密码', 'error');
+        isLoggingIn = false; // 早返回前重置标志
+        return;
+    }
+
     // 显示加载状态
     const submitBtn = e.target.querySelector('button[type="submit"]');
     const originalText = submitBtn.textContent;
     submitBtn.innerHTML = '<span class="loading"></span> 登录中...';
     submitBtn.disabled = true;
-    
+
     try {
         // 验证用户登录
         const user = await validateUser(username, password);
-        
+        console.log('用户验证结果:', user);
+
         if (user) {
-            // 登录成功
-            localStorage.setItem('currentUser', JSON.stringify(user));
-            showMessage('登录成功！', 'success');
-            
-            // 隐藏登录窗口，显示时钟
-            const loginOverlay = document.getElementById('loginOverlay');
-            const mainClockSection = document.querySelector('.main-clock-section');
-            if (loginOverlay && mainClockSection) {
-                loginOverlay.style.display = 'none';
-                mainClockSection.style.display = 'flex';
-            }
-            
+            // 登录成功，保存用户信息
+            const userData = {
+                username: username,
+                loginTime: new Date().toISOString()
+            };
+            localStorage.setItem('userData', JSON.stringify(userData));
+            console.log('用户数据已保存:', userData);
+
+            showMessage('登录成功！正在跳转...', 'success');
+
+            // 立即跳转到管理后台页面
+            setTimeout(() => {
+                console.log('准备跳转到dashboard.html');
+                window.location.href = 'dashboard.html';
+            }, 500);
+
             console.log('用户登录成功:', user);
         } else {
+            console.log('登录失败: 用户名或密码错误');
             showMessage('用户名或密码错误', 'error');
         }
     } catch (error) {
         console.error('登录错误:', error);
         showMessage('登录失败，请稍后重试', 'error');
     } finally {
-        // 恢复按钮状态
+        // 恢复按钮状态和重复提交标志
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
+        isLoggingIn = false;
     }
 }
 
@@ -478,25 +508,48 @@ async function validateUser(username, password) {
     try {
         // 优先尝试维格表API验证
         if (isVikaConfigured) {
-            const response = await fetch('http://localhost:3001/api/users/validate', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    username: username,
-                    password: password
-                })
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success) {
-                    return {
-                        id: data.user.id,
-                        username: data.user.username,
-                        email: data.user.email
-                    };
+            // 添加重试机制处理API频率限制
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    const response = await fetch('http://localhost:3001/api/users/validate', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            username: username,
+                            password: password  // 发送原始密码，让后端处理加密
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success) {
+                            return {
+                                id: data.user.id,
+                                username: data.user.username,
+                                email: data.user.email
+                            };
+                        } else {
+                            // 验证失败，不需要重试
+                            break;
+                        }
+                    } else if (response.status === 500) {
+                        const errorData = await response.json();
+                        if (errorData.error && errorData.error.includes('QPS')) {
+                            console.warn(`维格表API频率限制，第${attempt}次重试...`);
+                            if (attempt < 3) {
+                                await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // 递增延迟
+                                continue;
+                            }
+                        }
+                    }
+                    break;
+                } catch (fetchError) {
+                    console.warn(`维格表API请求失败 (尝试 ${attempt}/3):`, fetchError.message);
+                    if (attempt < 3) {
+                        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                    }
                 }
             }
         }
@@ -505,6 +558,7 @@ async function validateUser(username, password) {
     }
     
     // 使用本地存储作为备用
+    console.log('使用本地存储验证用户');
     return await validateUserLocal(username, password);
 }
 
@@ -528,16 +582,36 @@ async function checkUserExists(username) {
     try {
         // 优先尝试维格表API检查用户
         if (isVikaConfigured) {
-            const response = await fetch(`http://localhost:3001/api/users/check/${username}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
+            // 添加重试机制处理API频率限制
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    const response = await fetch(`http://localhost:3001/api/users/check/${username}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        return data.exists;
+                    } else if (response.status === 500) {
+                        const errorData = await response.json();
+                        if (errorData.error && errorData.error.includes('QPS')) {
+                            console.warn(`维格表API频率限制，第${attempt}次重试...`);
+                            if (attempt < 3) {
+                                await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // 递增延迟
+                                continue;
+                            }
+                        }
+                    }
+                    break;
+                } catch (fetchError) {
+                    console.warn(`维格表API请求失败 (尝试 ${attempt}/3):`, fetchError.message);
+                    if (attempt < 3) {
+                        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                    }
                 }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                return data.exists;
             }
         }
     } catch (error) {
@@ -545,6 +619,7 @@ async function checkUserExists(username) {
     }
     
     // 使用本地存储作为备用
+    console.log('使用本地存储检查用户');
     const users = JSON.parse(localStorage.getItem('users') || '[]');
     return users.some(user => user.username === username);
 }
@@ -563,34 +638,57 @@ async function createUser(username, email, password) {
         
         // 优先尝试维格表API创建用户
         if (isVikaConfigured) {
-            const hashedPassword = await hashPassword(password);
+            // 发送原始密码，让后端处理加密
             
-            const response = await fetch('http://localhost:3001/api/users', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    username: username,
-                    email: email,
-                    password: hashedPassword
-                })
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                console.log('维格表创建用户成功:', data);
-                return {
-                    success: true,
-                    username: username,
-                    email: email
-                };
-            } else {
-                const errorData = await response.json();
-                throw new Error(errorData.message || '维格表创建用户失败');
+            // 添加重试机制处理API频率限制
+            for (let attempt = 1; attempt <= 3; attempt++) {
+                try {
+                    const response = await fetch('http://localhost:3001/api/users', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            username: username,
+                            email: email,
+                            password: password  // 发送原始密码，避免双重加密
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('维格表创建用户成功:', data);
+                        return {
+                            success: true,
+                            username: username,
+                            email: email
+                        };
+                    } else if (response.status === 500) {
+                        const errorData = await response.json();
+                        if (errorData.error && errorData.error.includes('QPS')) {
+                            console.warn(`维格表API频率限制，第${attempt}次重试...`);
+                            if (attempt < 3) {
+                                await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // 递增延迟
+                                continue;
+                            }
+                        }
+                        throw new Error(errorData.message || '维格表创建用户失败');
+                    } else {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || '维格表创建用户失败');
+                    }
+                } catch (fetchError) {
+                    console.warn(`维格表API请求失败 (尝试 ${attempt}/3):`, fetchError.message);
+                    if (attempt < 3) {
+                        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                        continue;
+                    }
+                    throw fetchError;
+                }
             }
         } else {
             // 使用本地存储
+            console.log('使用本地存储创建用户');
             const hashedPassword = await hashPassword(password);
             const result = createUserLocal(username, email, hashedPassword);
             return {
@@ -645,22 +743,35 @@ function showMessage(message, type) {
     messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
     messageDiv.textContent = message;
     
-    // 插入消息
-    let targetForm;
-    if (registerForm && registerForm.style.display !== 'none') {
-        targetForm = registerForm;
-    } else if (loginForm && loginForm.style.display !== 'none') {
-        targetForm = loginForm;
-    } else {
-        // 如果都没有显示，默认使用注册表单
-        targetForm = registerForm || loginForm;
+    // 基于可见容器选择插入位置，避免插入到隐藏表单中
+    const loginFormContainer = document.getElementById('loginFormContainer');
+    const registerFormContainer = document.getElementById('registerFormContainer');
+    const safeDisplay = (el) => {
+        try { return el ? getComputedStyle(el).display : 'none'; } catch (_) { return 'none'; }
+    };
+
+    let targetContainer = null;
+    if (registerFormContainer && safeDisplay(registerFormContainer) !== 'none') {
+        targetContainer = registerFormContainer;
+    } else if (loginFormContainer && safeDisplay(loginFormContainer) !== 'none') {
+        targetContainer = loginFormContainer;
     }
     
-    if (targetForm) {
-        targetForm.insertBefore(messageDiv, targetForm.firstChild);
-        console.log('消息已插入到表单中');
+    if (targetContainer) {
+        targetContainer.insertBefore(messageDiv, targetContainer.firstChild);
+        console.log('消息已插入到容器中');
+    } else if (loginForm || registerForm) {
+        // 兜底：按表单的可见性插入
+        const targetForm = (loginForm && safeDisplay(loginForm) !== 'none') ? loginForm : registerForm;
+        if (targetForm) {
+            targetForm.insertBefore(messageDiv, targetForm.firstChild);
+            console.log('消息已插入到表单中');
+        } else {
+            document.body.insertBefore(messageDiv, document.body.firstChild);
+            console.log('消息已插入到body中');
+        }
     } else {
-        // 备用方案：插入到body中
+        // 最后兜底
         document.body.insertBefore(messageDiv, document.body.firstChild);
         console.log('消息已插入到body中');
     }
