@@ -27,9 +27,24 @@ function updateClock() {
     if (dateElement) dateElement.textContent = dateString;
 }
 
-// 维格表配置 - 请替换为您的实际配置
+// API配置 - 根据环境动态设置
+const API_CONFIG = {
+    // 检测是否为本地开发环境
+    isDevelopment: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
+    
+    get baseURL() {
+        if (this.isDevelopment) {
+            return 'http://localhost:3001/api';
+        } else {
+            // 生产环境使用相对路径，指向Vercel无服务器函数
+            return '/api';
+        }
+    }
+};
+
+// 维格表配置
 const VIKA_CONFIG = {
-    // 维格表配置 - 请替换为您的实际配置
+    // 请替换为您的维格表配置
     apiToken: 'uskPGemFgQLFNdWMMNm8KRL', // 替换为您的维格表API Token
     datasheetId: 'dstj2Cp49ca1bXcfZ6', // 替换为您的数据表ID
     baseUrl: 'https://vika.cn/fusion/v1'
@@ -44,7 +59,7 @@ async function testVikaConnection() {
     
     try {
         // 通过代理服务器测试维格表连接
-        const response = await fetch('http://localhost:3001/api/test', {
+        const response = await fetch(`${API_CONFIG.baseURL}/test`, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json'
@@ -511,7 +526,7 @@ async function validateUser(username, password) {
             // 添加重试机制处理API频率限制
             for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
-                    const response = await fetch('http://localhost:3001/api/users/validate', {
+                    const response = await fetch(`${API_CONFIG.baseURL}/users/validate`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -585,7 +600,7 @@ async function checkUserExists(username) {
             // 添加重试机制处理API频率限制
             for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
-                    const response = await fetch(`http://localhost:3001/api/users/check/${username}`, {
+                    const response = await fetch(`${API_CONFIG.baseURL}/users/check/${username}`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json'
@@ -643,7 +658,7 @@ async function createUser(username, email, password) {
             // 添加重试机制处理API频率限制
             for (let attempt = 1; attempt <= 3; attempt++) {
                 try {
-                    const response = await fetch('http://localhost:3001/api/users', {
+                    const response = await fetch(`${API_CONFIG.baseURL}/users`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'

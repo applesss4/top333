@@ -5,9 +5,20 @@ let currentPage = 1;
 let itemsPerPage = 10;
 let editingScheduleId = null;
 
-// 维格表API配置
+// API配置 - 根据环境动态设置
 const VIKA_CONFIG = {
-    baseURL: 'http://localhost:3001/api',
+    // 检测是否为本地开发环境
+    isDevelopment: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
+    
+    get baseURL() {
+        if (this.isDevelopment) {
+            return 'http://localhost:3001/api';
+        } else {
+            // 生产环境使用相对路径，指向Vercel无服务器函数
+            return '/api';
+        }
+    },
+    
     scheduleTable: 'work_schedule'
 };
 

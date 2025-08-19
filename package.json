@@ -5,10 +5,13 @@
   "main": "vika-proxy.js",
   "scripts": {
     "start": "node vika-proxy.js",
-    "dev": "nodemon vika-proxy.js"
+    "dev": "nodemon vika-proxy.js",
+    "build": "echo 'Build completed'",
+    "vercel-build": "echo 'Vercel build completed'"
   },
   "dependencies": {
     "@vikadata/vika": "^1.4.5",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "express": "^4.18.2",
     "node-fetch": "^2.6.7"
