@@ -2,16 +2,5 @@
   "version": 2,
   "builds": [
     { "src": "api/**/*.js", "use": "@vercel/node" }
-  ],
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1.js" },
-    { "src": "/hello", "dest": "/api/hello.js" },
-    { "src": "/dashboard", "dest": "/dashboard.html" },
-    { "src": "/", "dest": "/index.html" }
-  ],
-  "env": {
-    "VIKA_API_TOKEN": "@vika-api-token",
-    "VIKA_DATASHEET_ID": "@vika-datasheet-id",
-    "VIKA_SCHEDULE_DATASHEET_ID": "@vika-schedule-datasheet-id"
-  }
+  ]
 }
