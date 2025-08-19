@@ -2,12 +2,8 @@
   "name": "vika-proxy-server",
   "version": "1.0.0",
   "description": "维格表代理服务器，解决CORS问题",
-  "main": "vika-proxy.js",
-  "scripts": {
-    "start": "node vika-proxy.js",
-    "dev": "nodemon vika-proxy.js",
-    "build": "echo 'Build completed'",
-    "vercel-build": "echo 'Vercel build completed'"
+  "engines": {
+    "node": ">=16.x"
   },
   "dependencies": {
     "@vikadata/vika": "^1.4.5",
