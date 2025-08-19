@@ -438,7 +438,8 @@ async function handleLogin(e) {
                 if (API_CONFIG && API_CONFIG.isDevelopment) {
                     window.location.href = 'dashboard.html';
                 } else {
-                    window.location.href = '/dashboard';
+                    // 生产环境直接跳转到静态文件，避免 /dashboard 路由在无 vercel.json 时 404
+                    window.location.href = '/dashboard.html';
                 }
             }, 500);
 
