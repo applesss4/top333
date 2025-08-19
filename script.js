@@ -434,8 +434,12 @@ async function handleLogin(e) {
 
             // 立即跳转到管理后台页面
             setTimeout(() => {
-                console.log('准备跳转到dashboard.html');
-                window.location.href = 'dashboard.html';
+                console.log('准备跳转到dashboard');
+                if (API_CONFIG && API_CONFIG.isDevelopment) {
+                    window.location.href = 'dashboard.html';
+                } else {
+                    window.location.href = '/dashboard';
+                }
             }, 500);
 
             console.log('用户登录成功:', user);
