@@ -5,12 +5,7 @@
   ],
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1.js" },
-    { "src": "/api/test", "dest": "/api/test.js" },
-    { "src": "/api/users", "dest": "/api/users.js" },
-    { "src": "/api/users/validate", "dest": "/api/users.js" },
-    { "src": "/api/users/check/(.*)", "dest": "/api/users.js" },
-    { "src": "/api/schedule", "dest": "/api/schedule.js" },
-    { "src": "/api/schedule/(.*)", "dest": "/api/schedule.js" },
+    { "src": "/hello", "dest": "/api/hello.js" },
     { "src": "/dashboard", "dest": "/dashboard.html" },
     { "src": "/", "dest": "/index.html" }
   ],
