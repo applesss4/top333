@@ -4,53 +4,17 @@
     {
       "src": "api/**/*.js",
       "use": "@vercel/node"
-    },
-    {
-      "src": "*.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "*.css",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "*.js",
-      "use": "@vercel/static"
     }
   ],
   "routes": [
-    {
-      "src": "/api/test",
-      "dest": "/api/test.js"
-    },
-    {
-      "src": "/api/users",
-      "dest": "/api/users.js"
-    },
-    {
-      "src": "/api/users/validate",
-      "dest": "/api/users.js"
-    },
-    {
-      "src": "/api/users/check/(.*)",
-      "dest": "/api/users.js"
-    },
-    {
-      "src": "/api/schedule",
-      "dest": "/api/schedule.js"
-    },
-    {
-      "src": "/api/schedule/(.*)",
-      "dest": "/api/schedule.js"
-    },
-    {
-      "src": "/dashboard",
-      "dest": "/dashboard.html"
-    },
-    {
-      "src": "/",
-      "dest": "/index.html"
-    }
+    { "src": "/api/test", "dest": "/api/test.js" },
+    { "src": "/api/users", "dest": "/api/users.js" },
+    { "src": "/api/users/validate", "dest": "/api/users.js" },
+    { "src": "/api/users/check/(.*)", "dest": "/api/users.js" },
+    { "src": "/api/schedule", "dest": "/api/schedule.js" },
+    { "src": "/api/schedule/(.*)", "dest": "/api/schedule.js" },
+    { "src": "/dashboard", "dest": "/dashboard.html" },
+    { "src": "/", "dest": "/index.html" }
   ],
   "env": {
     "VIKA_API_TOKEN": "@vika-api-token",
