@@ -15,13 +15,44 @@ app.use(express.json());
 const VIKA_CONFIG = {
     apiToken: process.env.VIKA_API_TOKEN,
     datasheetId: process.env.VIKA_DATASHEET_ID,
-    baseUrl: process.env.VIKA_BASE_URL
+    scheduleDatasheetId: process.env.VIKA_SCHEDULE_DATASHEET_ID,
+    baseUrl: process.env.VIKA_BASE_URL || 'https://vika.cn/fusion/v1'
 };
 
-// 用户注册接口
+// 统一的 Vika API 调用辅助函数
+async function callVika(method, endpoint, data = null) {
+    const url = `${VIKA_CONFIG.baseUrl}${endpoint}`;
+    const headers = {
+        'Authorization': `Bearer ${VIKA_CONFIG.apiToken}`,
+        'Content-Type': 'application/json'
+    };
+    try {
+        const resp = await axios({ method, url, headers, data });
+        return resp.data;
+    } catch (err) {
+        const e = new Error(err?.response?.data?.message || err?.response?.data?.msg || err?.message || 'Vika API error');
+        e.status = err?.response?.status;
+        e.details = err?.response?.data;
+        e.url = url;
+        throw e;
+    }
+}
+
+// 通用日期格式化：将任意可解析时间值转为 YYYY-MM-DD 字符串
+function toYMD(v) {
+  try {
+    const d = new Date(v);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toISOString().split('T')[0];
+  } catch (_) {
+    return '';
+  }
+}
+
+// 移除敏感配置输出日志，避免泄露令牌
 app.post('/api/register', async (req, res) => {
     console.log('收到注册请求:', req.body);
-    console.log('当前维格表配置:', VIKA_CONFIG);
+    // 已移除敏感配置输出，避免泄露 VIKA 配置信息
     try {
         const { username, email, password } = req.body;
         
@@ -159,7 +190,7 @@ app.post('/api/login', async (req, res) => {
 async function checkUserExists(username, email) {
     try {
         console.log('正在检查用户是否存在:', { username, email });
-        console.log('维格表配置:', VIKA_CONFIG);
+        // 已移除敏感配置输出，避免泄露 VIKA 配置信息
         
         const response = await axios.get(
             `${VIKA_CONFIG.baseUrl}/datasheets/${VIKA_CONFIG.datasheetId}/records`,
@@ -202,8 +233,321 @@ app.get('/api/health', (req, res) => {
     });
 });
 
-// 启动服务器
-app.listen(PORT, () => {
-    console.log(`Backend server is running on http://localhost:${PORT}`);
-    console.log(`Health check: http://localhost:${PORT}/api/health`);
+// ============ 与前端一致的 /api/users 路由 ============
+// 创建用户
+app.post('/api/users', async (req, res) => {
+    try {
+        const { username, email, password } = req.body;
+        if (!username || !email || !password) {
+            return res.status(400).json({ success: false, message: '用户名、邮箱和密码都是必填项' });
+        }
+        const filter = encodeURIComponent(`{username} = "${username}"`);
+        const checkResp = await callVika('GET', `/datasheets/${VIKA_CONFIG.datasheetId}/records?fieldKey=name&filterByFormula=${filter}`);
+        if (checkResp.success && Array.isArray(checkResp.data?.records) && checkResp.data.records.length > 0) {
+            return res.status(400).json({ success: false, message: '用户名已存在' });
+        }
+        const hashedPassword = bcrypt.hashSync(password, 10);
+        const payload = {
+            records: [{
+                fields: { username, email, password: hashedPassword, created_at: new Date().toISOString() }
+            }],
+            fieldKey: 'name'
+        };
+        const createResponse = await callVika('POST', `/datasheets/${VIKA_CONFIG.datasheetId}/records`, payload);
+        if (createResponse.success) {
+            const rec = createResponse.data.records[0];
+            return res.status(201).json({ success: true, message: '用户创建成功', user: { id: rec.recordId, username, email } });
+        }
+        throw new Error(createResponse.message || '创建用户失败');
+    } catch (e) {
+        console.error('创建用户失败:', e);
+        return res.status(e.status || 500).json({ success: false, message: e.message || '服务器错误', details: e.details });
+    }
 });
+
+// 验证用户
+app.post('/api/users/validate', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        if (!username || !password) {
+            return res.status(400).json({ success: false, message: '用户名和密码都是必填项' });
+        }
+        const filter = encodeURIComponent(`{username} = "${username}"`);
+        const userResponse = await callVika('GET', `/datasheets/${VIKA_CONFIG.datasheetId}/records?fieldKey=name&filterByFormula=${filter}`);
+        if (!userResponse.success || !Array.isArray(userResponse.data?.records) || userResponse.data.records.length === 0) {
+            return res.status(401).json({ success: false, message: '用户名或密码错误' });
+        }
+        const user = userResponse.data.records[0];
+        const isPasswordValid = bcrypt.compareSync(password, user.fields.password);
+        if (isPasswordValid) {
+            return res.status(200).json({ success: true, message: '登录成功', user: { id: user.recordId, username: user.fields.username, email: user.fields.email } });
+        }
+        return res.status(401).json({ success: false, message: '用户名或密码错误' });
+    } catch (e) {
+        console.error('验证用户失败:', e);
+        return res.status(e.status || 500).json({ success: false, message: e.message || '服务器错误', details: e.details });
+    }
+});
+
+// 检查用户是否存在
+app.get('/api/users/check/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        if (!username) return res.status(400).json({ success: false, message: '用户名参数缺失' });
+        const filter = encodeURIComponent(`{username} = "${username}"`);
+        const userResponse = await callVika('GET', `/datasheets/${VIKA_CONFIG.datasheetId}/records?fieldKey=name&filterByFormula=${filter}`);
+        return res.status(200).json({ exists: userResponse.success && Array.isArray(userResponse.data?.records) && userResponse.data.records.length > 0 });
+    } catch (e) {
+        console.error('检查用户失败:', e);
+        return res.status(e.status || 500).json({ success: false, message: e.message || '服务器错误', details: e.details });
+    }
+});
+
+// ============ 与前端一致的 /api/schedule 路由 ============
+// 诊断与获取列表
+app.get('/api/schedule', async (req, res) => {
+    try {
+        const { diag, username, date } = req.query || {};
+        // 使用全局 toYMD
+        const envInfo = {
+            hasToken: !!VIKA_CONFIG.apiToken,
+            hasScheduleId: !!VIKA_CONFIG.scheduleDatasheetId,
+            baseUrl: VIKA_CONFIG.baseUrl,
+            runtime: process.version,
+        };
+        if (diag === '1' || diag === 'true') {
+            if (!VIKA_CONFIG.apiToken || !VIKA_CONFIG.scheduleDatasheetId) {
+                return res.status(200).json({ success: false, message: '缺少必要配置', env: envInfo });
+            }
+            try {
+                const ping = await callVika('GET', `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records?pageSize=1&fieldKey=name`);
+                const sample = Array.isArray(ping?.data?.records) ? ping.data.records.slice(0,1) : [];
+                const fieldKeys = Object.keys(sample?.[0]?.fields || {});
+                const hasUsernameField = fieldKeys.includes('用户名') || fieldKeys.includes('username');
+                return res.status(200).json({ success: true, total: ping?.data?.total ?? null, sample, env: envInfo, fieldKeys, hasUsernameField });
+            } catch (e) {
+                return res.status(e.status || 500).json({ success: false, error: e.message, details: e.details, url: e.url, env: envInfo });
+            }
+        }
+
+        let endpoint = `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records?fieldKey=name`;
+        
+        const buildEncoded = (formula) => `&filterByFormula=${encodeURIComponent(formula)}`;
+        const tryFetch = async (suffix) => callVika('GET', `${endpoint}${suffix || ''}`);
+
+        // 如果表里没有 用户名/username 字段，则跳过远程过滤，改为服务端全量+本地过滤（基于备注标签）
+        const { hasUsernameField } = await detectScheduleFieldKeys();
+
+        let response;
+        if (hasUsernameField && username && date) {
+            const candidates = [
+                `AND(OR({用户名} = "${username}", {username} = "${username}"), {工作日期} = "${date}")`,
+                `AND({用户名} = "${username}", {工作日期} = "${date}")`,
+                `AND({username} = "${username}", {工作日期} = "${date}")`,
+            ];
+            for (const f of candidates) {
+                try {
+                    const resp = await tryFetch(buildEncoded(f));
+                    if (resp && resp.success) { response = resp; break; }
+                    continue;
+                } catch (e) {
+                    console.warn('Vika过滤查询失败(用户名+日期):', { status: e?.status, message: e?.message });
+                    continue;
+                }
+            }
+        } else if (hasUsernameField && username) {
+            const candidates = [
+                `OR({用户名} = "${username}", {username} = "${username}")`,
+                `{用户名} = "${username}"`,
+                `{username} = "${username}"`,
+            ];
+            for (const f of candidates) {
+                try {
+                    const resp = await tryFetch(buildEncoded(f));
+                    if (resp && resp.success) { response = resp; break; }
+                    continue;
+                } catch (e) {
+                    console.warn('Vika过滤查询失败(仅用户名):', { status: e?.status, message: e?.message });
+                    continue;
+                }
+            }
+        }
+
+        if (!response) {
+            // 若未能通过远程过滤获取，则全量拉取并在服务端过滤
+            let all;
+            try {
+                all = await callVika('GET', `${endpoint}&pageSize=500&pageNum=1`);
+            } catch (err) {
+                console.warn('Vika全量拉取调用异常:', { status: err?.status, message: err?.message });
+                return res.status(200).json({ success: true, records: [] });
+            }
+            if (!all.success) {
+                console.warn('Vika全量拉取返回非成功:', all.message);
+                return res.status(200).json({ success: true, records: [] });
+            }
+            let records = Array.isArray(all.data?.records) ? all.data.records : [];
+            if (username) {
+                records = records.filter(r => {
+                    const u = r.fields['用户名'] || r.fields['username'] || '';
+                    const notes = r.fields['备注'] || '';
+                    const tag = `[@user:${username}]`;
+                    return u === username || (typeof notes === 'string' && notes.includes(tag));
+                });
+            }
+            if (date) {
+                records = records.filter(r => {
+                    const d = r.fields['工作日期'];
+                    const ds = toYMD(d);
+                    return !!ds && ds === date;
+                });
+            }
+            const schedules = records.map(record => ({
+                id: record.recordId,
+                username: record.fields['username'] || record.fields['用户名'] || '',
+                workStore: Array.isArray(record.fields['工作店铺']) ? record.fields['工作店铺'] : [record.fields['工作店铺']].filter(Boolean),
+                workDate: toYMD(record.fields['工作日期']) || '',
+                startTime: record.fields['开始时间'] || '',
+                endTime: record.fields['结束时间'] || '',
+                duration: record.fields['工作时长'] ?? 0,
+                notes: record.fields['备注'] || '',
+                createdAt: record.fields['created_at'] || record.fields['创建时间'] || ''
+            }));
+            return res.status(200).json({ success: true, records: schedules });
+        }
+
+        // 有 response 则直接按远程返回转换
+        const schedules = (response.data?.records || []).map(record => ({
+            id: record.recordId,
+            username: record.fields['username'] || record.fields['用户名'] || '',
+            workStore: Array.isArray(record.fields['工作店铺']) ? record.fields['工作店铺'] : [record.fields['工作店铺']].filter(Boolean),
+            workDate: toYMD(record.fields['工作日期']) || '',
+            startTime: record.fields['开始时间'] || '',
+            endTime: record.fields['结束时间'] || '',
+            duration: record.fields['工作时长'] ?? 0,
+            notes: record.fields['备注'] || '',
+            createdAt: record.fields['created_at'] || record.fields['创建时间'] || ''
+        }));
+        return res.status(200).json({ success: true, records: schedules });
+    } catch (e) {
+        console.error('获取工作日程失败:', e);
+        // 遇到任何异常，降级为空列表，避免影响前端使用
+        return res.status(200).json({ success: true, records: [], warn: 'fallback_empty_on_error', errorMessage: e?.message });
+    }
+});
+
+// 创建
+app.post('/api/schedule', async (req, res) => {
+    try {
+        const { username, workStore, workDate, startTime, endTime, duration, notes } = req.body || {};
+        if (!workStore || !workDate || !startTime || !endTime) {
+            return res.status(400).json({ success: false, message: '必填字段缺失' });
+        }
+        const { hasUsernameField } = await detectScheduleFieldKeys();
+        const tag = username ? `[@user:${username}]` : '';
+        const mergedNotes = (() => {
+            const base = notes || '';
+            if (!username) return base;
+            if (typeof base === 'string' && base.includes(tag)) return base; // 避免重复追加
+            return base ? `${base} ${tag}` : tag;
+        })();
+        const fieldsToCreate = {
+            '工作店铺': Array.isArray(workStore) ? workStore : [workStore],
+            '工作日期': new Date(workDate).toISOString(),
+            '开始时间': startTime,
+            '结束时间': endTime,
+            '工作时长': duration ?? null,
+            '备注': mergedNotes,
+            'created_at': new Date().toISOString()
+        };
+        if (username && hasUsernameField) {
+            fieldsToCreate['username'] = username; // 英文字段（若存在）
+            fieldsToCreate['用户名'] = username;    // 中文显示名（常见场景）
+        }
+        const payload = { records: [{ fields: fieldsToCreate }], fieldKey: 'name' };
+        const createResponse = await callVika('POST', `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records`, payload);
+        if (!createResponse.success) throw new Error('创建工作日程失败');
+        const newRecord = createResponse.data.records[0];
+        return res.status(201).json({ success: true, message: '工作日程创建成功', data: {
+            id: newRecord.recordId,
+            username: newRecord.fields['username'] || newRecord.fields['用户名'] || '',
+            workStore: newRecord.fields['工作店铺'] || [],
+            workDate: toYMD(newRecord.fields['工作日期']) || '',
+            startTime: newRecord.fields['开始时间'] || '',
+            endTime: newRecord.fields['结束时间'] || '',
+            duration: newRecord.fields['工作时长'] ?? 0,
+            notes: newRecord.fields['备注'] || '',
+            createdAt: newRecord.fields['created_at'] || ''
+        }});
+    } catch (e) {
+        console.error('创建工作日程失败:', e);
+        return res.status(e.status || 500).json({ success: false, message: e.message || '服务器错误', details: e.details });
+    }
+});
+
+// 更新
+app.put('/api/schedule/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { username, workStore, workDate, startTime, endTime, duration, notes } = req.body || {};
+        if (!id) return res.status(400).json({ success: false, message: '工作日程ID缺失' });
+        const fieldsToUpdate = {};
+        if (username) {
+            fieldsToUpdate['username'] = username; // 英文字段（若存在）
+            fieldsToUpdate['用户名'] = username;    // 中文显示名（常见场景）
+        }
+        if (workStore) fieldsToUpdate['工作店铺'] = Array.isArray(workStore) ? workStore : [workStore];
+        if (workDate) fieldsToUpdate['工作日期'] = new Date(workDate).toISOString();
+        if (startTime) fieldsToUpdate['开始时间'] = startTime;
+        if (endTime) fieldsToUpdate['结束时间'] = endTime;
+        if (duration !== undefined) fieldsToUpdate['工作时长'] = duration;
+        if (notes !== undefined) {
+            const tag = username ? `[@user:${username}]` : '';
+            const nextNotes = (() => {
+                const base = notes || '';
+                if (!username) return base;
+                if (typeof base === 'string' && base.includes(tag)) return base;
+                return base ? `${base} ${tag}` : tag;
+            })();
+            fieldsToUpdate['备注'] = nextNotes;
+        }
+        const payload = { records: [{ recordId: id, fields: fieldsToUpdate }], fieldKey: 'name' };
+        const updateResp = await callVika('PATCH', `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records`, payload);
+        if (!updateResp.success) throw new Error('更新工作日程失败');
+        return res.status(200).json({ success: true, message: '工作日程更新成功' });
+    } catch (e) {
+        console.error('更新工作日程失败:', e);
+        return res.status(e.status || 500).json({ success: false, message: e.message || '服务器错误', details: e.details });
+    }
+});
+
+// 删除
+app.delete('/api/schedule/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) return res.status(400).json({ success: false, message: '工作日程ID缺失' });
+        const deleteResp = await callVika('DELETE', `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records?recordIds=${encodeURIComponent(JSON.stringify([id]))}`);
+        if (!deleteResp.success) throw new Error('删除工作日程失败');
+        return res.status(200).json({ success: true, message: '工作日程删除成功' });
+    } catch (e) {
+        console.error('删除工作日程失败:', e);
+        return res.status(e.status || 500).json({ success: false, message: e.message || '服务器错误', details: e.details });
+    }
+});
+
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
+
+// 检测日程表字段（用于判断是否存在“用户名/username”字段）
+async function detectScheduleFieldKeys() {
+    try {
+        const ping = await callVika('GET', `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records?pageSize=1&fieldKey=name`);
+        const sample = Array.isArray(ping?.data?.records) ? ping.data.records[0] : null;
+        const fieldKeys = Object.keys(sample?.fields || {});
+        const hasUsernameField = fieldKeys.includes('用户名') || fieldKeys.includes('username');
+        return { fieldKeys, hasUsernameField };
+    } catch (e) {
+        return { fieldKeys: [], hasUsernameField: false };
+    }
+}

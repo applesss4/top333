@@ -6,19 +6,26 @@ let itemsPerPage = 10;
 let editingScheduleId = null;
 
 // API配置 - 根据环境动态设置
-const VIKA_CONFIG = {
-    // 检测是否为本地开发环境
+const API_CONFIG = {
     isDevelopment: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
-    
     get baseURL() {
-        if (this.isDevelopment) {
-            return 'http://localhost:3001/api';
-        } else {
-            // 生产环境使用相对路径，指向Vercel无服务器函数
-            return '/api';
+        const override = (typeof window !== 'undefined' && (window.__API_BASE_URL__ || localStorage.getItem('API_BASE_URL')));
+        if (override) return override;
+        if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
+            return 'http://localhost:3002/api';
         }
-    },
-    
+        if (this.isDevelopment) {
+            const protocol = window.location.protocol || 'http:';
+            const hostname = window.location.hostname || 'localhost';
+            const port = window.location.port || '3002';
+            return `${protocol}//${hostname}:${port}/api`;
+        }
+        return '/api';
+    }
+};
+
+const VIKA_CONFIG = {
+    // 保留业务表名配置（如需要）
     scheduleTable: 'work_schedule'
 };
 
@@ -233,7 +240,7 @@ function handleQuickAction(e) {
 async function loadScheduleData() {
     try {
         showLoading();
-        const response = await fetch(`${VIKA_CONFIG.baseURL}/schedule`);
+        const response = await fetch(`${API_CONFIG.baseURL}/schedule`);
         
         if (!response.ok) {
             throw new Error('获取数据失败');
@@ -504,11 +511,11 @@ async function handleScheduleSubmit(e) {
         
         if (editingScheduleId) {
             // 更新现有记录
-            url = `${VIKA_CONFIG.baseURL}/schedule/${editingScheduleId}`;
+            url = `${API_CONFIG.baseURL}/schedule/${editingScheduleId}`;
             method = 'PUT';
         } else {
             // 创建新记录
-            url = `${VIKA_CONFIG.baseURL}/schedule`;
+            url = `${API_CONFIG.baseURL}/schedule`;
             method = 'POST';
         }
         
@@ -574,7 +581,7 @@ async function confirmDelete() {
     if (!window.pendingDeleteId) return;
     
     try {
-        const response = await fetch(`${VIKA_CONFIG.baseURL}/schedule/${window.pendingDeleteId}`, {
+        const response = await fetch(`${API_CONFIG.baseURL}/schedule/${window.pendingDeleteId}`, {
             method: 'DELETE'
         });
         

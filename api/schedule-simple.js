@@ -1,11 +1,9 @@
-// Vercel无服务器函数 - 工作日程管理
-// 使用无SDK的简化实现，避免Vercel环境依赖问题
-const safeFetch = (typeof fetch === 'function') ? fetch : require('node-fetch');
+// Vercel无服务器函数 - 工作日程管理（简化版本，直接调用 Vika REST API）
 
 // 维格表配置
 const VIKA_CONFIG = {
     apiToken: process.env.VIKA_API_TOKEN,
-    scheduleDatasheetId: process.env.VIKA_SCHEDULE_DATASHEET_ID, // 工作日程表ID
+    scheduleDatasheetId: process.env.VIKA_SCHEDULE_DATASHEET_ID,
     baseUrl: process.env.VIKA_BASE_URL || 'https://vika.cn/fusion/v1'
 };
 
@@ -19,25 +17,18 @@ async function callVikaAPI(method, endpoint, data = null) {
             'Content-Type': 'application/json'
         }
     };
+    
     if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
         options.body = JSON.stringify(data);
     }
-
-    const response = await safeFetch(url, options);
-    const rawText = await response.text();
-    let result;
-    try {
-        result = rawText ? JSON.parse(rawText) : {};
-    } catch (_) {
-        result = { raw: rawText };
-    }
+    
+    const response = await fetch(url, options);
+    const result = await response.json();
+    
     if (!response.ok) {
-        const err = new Error(result?.message || result?.msg || result?.code || `Vika API error: ${response.status}`);
-        err.status = response.status;
-        err.details = result;
-        err.url = url;
-        throw err;
+        throw new Error(result.message || `Vika API error: ${response.status}`);
     }
+    
     return result;
 }
 
@@ -59,14 +50,6 @@ async function parseJsonBody(req) {
         });
         req.on('error', reject);
     });
-}
-
-// 确保备注中包含用户标签 [@user:username]
-function ensureUserTag(notes, username) {
-    if (!username) return notes || '';
-    const tag = `[@user:${username}]`;
-    const src = (notes || '').trim();
-    return src.includes(tag) ? src : `${src}${src ? ' ' : ''}${tag}`;
 }
 
 module.exports = async (req, res) => {
@@ -91,51 +74,54 @@ module.exports = async (req, res) => {
             return u.searchParams.get(name);
         } catch (_) { return undefined; }
     };
-
+    
     // 统一解析 JSON 请求体
     const body = await parseJsonBody(req);
     
     try {
         if (method === 'GET') {
-            // 诊断模式：仅检查与维格表的连通性，避免被业务逻辑干扰
+            // 诊断模式：仅检查与维格表的连通性
             const diag = getQueryParam('diag');
             if (diag === '1' || diag === 'true') {
-                const envInfo = {
-                    hasGlobalFetch: typeof fetch === 'function',
-                    runtime: process.version,
-                    hasToken: !!VIKA_CONFIG.apiToken,
-                    hasScheduleId: !!VIKA_CONFIG.scheduleDatasheetId,
-                    baseUrl: VIKA_CONFIG.baseUrl,
-                };
                 try {
-                    const ping = await callVikaAPI('GET', `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records?pageSize=1&fieldKey=name`);
+                    const result = await callVikaAPI('GET', `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records?maxRecords=1&fieldKey=name`);
                     return res.status(200).json({
                         success: true,
-                        total: ping?.data?.total ?? null,
-                        sample: Array.isArray(ping?.data?.records) ? ping.data.records.slice(0,1) : [],
+                        total: result.data?.total ?? null,
                         message: 'Vika API accessible via fetch',
-                        env: envInfo
+                        env: {
+                            hasToken: !!VIKA_CONFIG.apiToken,
+                            hasScheduleId: !!VIKA_CONFIG.scheduleDatasheetId,
+                        }
                     });
                 } catch (e) {
                     return res.status(500).json({
                         success: false,
                         error: e?.message || String(e),
-                        code: e?.code || e?.status || undefined,
-                        details: e?.details || undefined,
-                        url: e?.url || undefined,
-                        env: envInfo
+                        code: e?.code || undefined
                     });
                 }
             }
 
-            // 获取工作日程列表（为避免字段名不一致导致 filter 报错，先取全量再本地筛选）
+            // 获取工作日程列表
             const username = getQueryParam('username');
             const date = getQueryParam('date');
             
-            const response = await callVikaAPI('GET', `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records?fieldKey=name`);
+            let endpoint = `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records?fieldKey=name`;
             
-            if (response.success) {
-                let schedules = response.data.records.map(record => ({
+            // 构建过滤条件
+            if (username && date) {
+                const filter = encodeURIComponent(`AND({用户名} = "${username}", {工作日期} = "${date}")`);
+                endpoint += `&filterByFormula=${filter}`;
+            } else if (username) {
+                const filter = encodeURIComponent(`{用户名} = "${username}"`);
+                endpoint += `&filterByFormula=${filter}`;
+            }
+            
+            const result = await callVikaAPI('GET', endpoint);
+            
+            if (result.success) {
+                const schedules = result.data.records.map(record => ({
                     id: record.recordId,
                     username: record.fields['username'] || record.fields['用户名'] || '',
                     workStore: Array.isArray(record.fields['工作店铺']) ? record.fields['工作店铺'] : [record.fields['工作店铺']].filter(Boolean),
@@ -146,26 +132,17 @@ module.exports = async (req, res) => {
                     notes: record.fields['备注'] || '',
                     createdAt: record.fields['created_at'] || record.fields['创建时间'] || ''
                 }));
-
-                // 本地筛选，避免远程公式因字段差异报错
-                if (username) {
-                    const tag = `[@user:${username}]`;
-                    schedules = schedules.filter(r => r.username === username || (r.notes || '').includes(tag));
-                }
-                if (date) {
-                    schedules = schedules.filter(r => r.workDate === date);
-                }
                 
                 res.status(200).json({
                     success: true,
                     records: schedules
                 });
             } else {
-                throw new Error(response.message || '获取工作日程失败');
+                throw new Error('获取工作日程失败');
             }
             
         } else if (method === 'POST') {
-            // 创建工作日程（POST）中的必填校验与字段映射
+            // 创建工作日程
             const { username, workStore, workDate, startTime, endTime, duration, notes } = body;
             
             if (!workStore || !workDate || !startTime || !endTime) {
@@ -181,7 +158,7 @@ module.exports = async (req, res) => {
                 '开始时间': startTime,
                 '结束时间': endTime,
                 '工作时长': duration ?? null,
-                '备注': ensureUserTag(notes || '', username),
+                '备注': notes || '',
                 'created_at': new Date().toISOString()
             };
             if (username) {
@@ -193,10 +170,10 @@ module.exports = async (req, res) => {
                 fieldKey: 'name'
             };
             
-            const createResponse = await callVikaAPI('POST', `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records`, data);
+            const result = await callVikaAPI('POST', `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records`, data);
             
-            if (createResponse.success) {
-                const newRecord = createResponse.data.records[0];
+            if (result.success) {
+                const newRecord = result.data.records[0];
                 res.status(201).json({
                     success: true,
                     message: '工作日程创建成功',
@@ -235,9 +212,9 @@ module.exports = async (req, res) => {
             if (startTime !== undefined) updateFields['开始时间'] = startTime;
             if (endTime !== undefined) updateFields['结束时间'] = endTime;
             if (duration !== undefined) updateFields['工作时长'] = duration;
-            if (notes !== undefined) updateFields['备注'] = ensureUserTag(notes, username);
+            if (notes !== undefined) updateFields['备注'] = notes;
             
-            const updateData = {
+            const data = {
                 records: [{
                     recordId: scheduleId,
                     fields: updateFields
@@ -245,10 +222,10 @@ module.exports = async (req, res) => {
                 fieldKey: 'name'
             };
             
-            const updateResponse = await callVikaAPI('PATCH', `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records`, updateData);
+            const result = await callVikaAPI('PATCH', `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records`, data);
             
-            if (updateResponse.success) {
-                const updatedRecord = updateResponse.data.records[0];
+            if (result.success) {
+                const updatedRecord = result.data.records[0];
                 res.status(200).json({
                     success: true,
                     message: '工作日程更新成功',
@@ -284,9 +261,8 @@ module.exports = async (req, res) => {
                 success: true,
                 message: '工作日程删除成功'
             });
-        }
-        
-        else {
+            
+        } else {
             res.status(405).json({ error: 'Method not allowed' });
         }
         
@@ -299,18 +275,9 @@ module.exports = async (req, res) => {
             isDebug = dbg === '1' || dbg === 'true';
         } catch (_) {}
         const errMsg = error?.message || String(error);
-        const details = {
-            message: errMsg,
-            name: error?.name,
-            code: error?.code || error?.status,
-            stack: error?.stack,
-            response: error?.response || error?.data || error?.details || null,
-            url: error?.url || undefined
-        };
         res.status(500).json({
             success: false,
-            error: errMsg,
-            ...(isDebug ? { details } : {})
+            error: errMsg
         });
     }
 };

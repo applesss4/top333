@@ -1,0 +1,15 @@
+{
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs20.x"
+    },
+    "api/*.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "routes": [
+    { "src": "/dashboard", "dest": "/dashboard.html" },
+    { "src": "/", "dest": "/index.html" }
+  ],
+  "framework": null
+}

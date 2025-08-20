@@ -33,64 +33,46 @@ const API_CONFIG = {
     isDevelopment: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
     
     get baseURL() {
+        // 允许通过全局变量或 localStorage 覆盖（便于本地联调）
+        const override = (typeof window !== 'undefined' && (window.__API_BASE_URL__ || localStorage.getItem('API_BASE_URL')));
+        if (override) return override;
+        
+        // file:// 场景（直接双击打开 HTML）下无法使用相对路径，默认连接到本地后端 3002 端口
+        if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
+            return 'http://localhost:3002/api';
+        }
+        
         if (this.isDevelopment) {
-            return 'http://localhost:3001/api';
+            // 无论前端静态服务端口是多少（如 5500），开发环境默认固定指向本地后端 3002 端口
+            return 'http://localhost:3002/api';
         } else {
-            // 生产环境使用相对路径，指向Vercel无服务器函数
+            // 生产环境使用相对路径，指向无服务器函数
             return '/api';
         }
     }
 };
 
-// 维格表配置
-const VIKA_CONFIG = {
-    // 请替换为您的维格表配置
-    apiToken: 'uskPGemFgQLFNdWMMNm8KRL', // 替换为您的维格表API Token
-    datasheetId: 'dstj2Cp49ca1bXcfZ6', // 替换为您的数据表ID
-    baseUrl: 'https://vika.cn/fusion/v1'
-};
+// 前端不再存放维格表密钥信息，所有维格表访问均通过后端API进行
+const isVikaConfigured = true; // 前端默认认为后端可用，若后端返回错误再回退到本地存储
 
 // 测试维格表连接
 async function testVikaConnection() {
-    if (!isVikaConfigured) {
-        console.log('维格表未配置，跳过连接测试');
-        return false;
-    }
-    
     try {
-        // 通过代理服务器测试维格表连接
-        const response = await fetch(`${API_CONFIG.baseURL}/test`, {
+        const response = await fetch(`${API_CONFIG.baseURL}/health`, {
             method: 'GET',
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            headers: { 'Content-Type': 'application/json' }
         });
-        
         if (response.ok) {
             const data = await response.json();
-            console.log('✅ 维格表连接成功！', data.message);
+            console.log('✅ 维格表连接成功！', data.message || data);
             return true;
-        } else {
-            console.error('❌ 维格表连接失败，状态码:', response.status);
-            console.log('💡 将使用本地存储作为备用方案');
-            return false;
         }
+        console.warn('❌ 维格表连接失败，状态码:', response.status);
+        return false;
     } catch (error) {
-        console.error('❌ 维格表代理服务器连接失败:', error.message);
-        console.log('💡 请确保代理服务器正在运行 (npm start)');
-        console.log('💡 将使用本地存储作为备用方案');
+        console.warn('❌ 维格表连接测试出错:', error?.message || error);
         return false;
     }
-}
-
-// 检查维格表配置是否有效
-const isVikaConfigured = VIKA_CONFIG.apiToken !== 'YOUR_VIKA_API_TOKEN' && 
-                        VIKA_CONFIG.datasheetId !== 'YOUR_DATASHEET_ID';
-
-if (isVikaConfigured) {
-    console.log('维格表配置已启用，将使用维格表存储数据');
-} else {
-    console.log('维格表未配置，将使用本地存储模拟数据库功能');
 }
 
 // DOM元素变量声明
