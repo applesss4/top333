@@ -53,7 +53,7 @@ const API_CONFIG = {
 };
 
 // 前端不再存放维格表密钥信息，所有维格表访问均通过后端API进行
-const isVikaConfigured = true; // 前端默认认为后端可用，若后端返回错误再回退到本地存储
+let isVikaConfigured = false; // 动态检测后端是否可用
 
 // 测试维格表连接
 async function testVikaConnection() {
@@ -64,13 +64,23 @@ async function testVikaConnection() {
         });
         if (response.ok) {
             const data = await response.json();
-            console.log('✅ 维格表连接成功！', data.message || data);
-            return true;
+            // 检查后端是否配置了维格表
+            if (data.vikaConfigured) {
+                console.log('✅ 维格表连接成功！', data.message || data);
+                isVikaConfigured = true;
+                return true;
+            } else {
+                console.warn('⚠️ 后端未配置维格表环境变量，将使用本地存储');
+                isVikaConfigured = false;
+                return false;
+            }
         }
         console.warn('❌ 维格表连接失败，状态码:', response.status);
+        isVikaConfigured = false;
         return false;
     } catch (error) {
         console.warn('❌ 维格表连接测试出错:', error?.message || error);
+        isVikaConfigured = false;
         return false;
     }
 }
@@ -99,11 +109,14 @@ async function verifyPassword(password, hashedPassword) {
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('页面加载完成，使用Web Crypto API进行密码加密');
     
-    // 仅在配置了维格表且需要时才测试连接
+    // 测试后端连接和维格表配置状态
+    console.log('正在检测后端配置状态...');
+    await testVikaConnection();
+    
     if (isVikaConfigured) {
-        console.log('维格表已配置，将在需要时测试连接');
+        console.log('✅ 维格表已配置，将使用维格表存储');
     } else {
-        console.log('维格表未配置，使用本地存储功能');
+        console.log('⚠️ 维格表未配置，将使用本地存储功能');
     }
     
     // 启动数字时钟
