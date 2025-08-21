@@ -740,6 +740,7 @@ function showMessage(message, type = 'success') {
 window.editSchedule = editSchedule;
 window.deleteSchedule = deleteSchedule;
 window.changePage = changePage;
+window.API_CONFIG = API_CONFIG;
 
 // 优化移动端表单交互
 function optimizeMobileFormInputs() {
