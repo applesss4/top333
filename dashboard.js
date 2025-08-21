@@ -854,15 +854,30 @@ function showShopMonthlyStats(contentDiv) {
         return scheduleDate >= thisMonthStart && scheduleDate <= thisMonthEnd;
     });
     
+    console.log('本月日程数据:', monthSchedules);
+    
     // 按店铺分组统计
     const shopStats = {};
     monthSchedules.forEach(schedule => {
-        const shopName = getStoreName(schedule.storeCode);
+        // 从shopData中获取正确的店铺名称
+        let shopName = '未知店铺';
+        if (schedule.storeCode) {
+            const shop = shopData.find(s => s.id === schedule.storeCode || s.code === schedule.storeCode);
+            if (shop) {
+                shopName = shop.name;
+            } else {
+                // 如果找不到对应店铺，使用storeCode
+                shopName = schedule.storeCode;
+            }
+        }
+        
         if (!shopStats[shopName]) {
             shopStats[shopName] = 0;
         }
         shopStats[shopName] += calculateDuration(schedule.startTime, schedule.endTime);
     });
+    
+    console.log('店铺统计数据:', shopStats);
     
     // 生成新的HTML内容
     let newContent = '';
