@@ -14,13 +14,10 @@ const API_CONFIG = {
         const override = (typeof window !== 'undefined' && (window.__API_BASE_URL__ || localStorage.getItem('API_BASE_URL')));
         if (override) return override;
         if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
-            return 'http://localhost:3002/api';
+            return 'http://localhost:3001/api';
         }
         if (this.isDevelopment) {
-            const protocol = window.location.protocol || 'http:';
-            const hostname = window.location.hostname || 'localhost';
-            const port = window.location.port || '3002';
-            return `${protocol}//${hostname}:${port}/api`;
+            return 'http://localhost:3001/api';
         }
         return '/api';
     }
@@ -1100,25 +1097,73 @@ function clearFormErrors() {
 // ========== 系统设置相关函数 ==========
 
 // 加载个人信息数据
-function loadProfileData() {
-    const profileData = JSON.parse(localStorage.getItem('profileData') || '{}');
-    const username = profileData.username || currentUser.username || '管理员';
-    const welcome = profileData.welcome || '欢迎，777777';
-    
-    document.getElementById('profileUsername').textContent = username;
-    document.getElementById('profileWelcome').textContent = welcome;
+async function loadProfileData() {
+    try {
+        const currentUsername = currentUser?.username;
+        if (!currentUsername) {
+            console.warn('当前用户信息不存在，使用默认值');
+            document.getElementById('profileUsername').textContent = '管理员';
+            document.getElementById('profileWelcome').textContent = '欢迎使用系统';
+            return;
+        }
+        
+        const response = await fetch(`${API_CONFIG.baseURL}/profile/${currentUsername}`);
+        
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+                const profileData = result.data;
+                document.getElementById('profileUsername').textContent = profileData.displayName || profileData.username || '管理员';
+                document.getElementById('profileWelcome').textContent = profileData.welcomeMessage || '欢迎使用系统';
+                return;
+            }
+        }
+        
+        // API调用失败时，使用默认值
+        console.warn('获取个人信息失败，使用默认值');
+        document.getElementById('profileUsername').textContent = currentUsername || '管理员';
+        document.getElementById('profileWelcome').textContent = '欢迎使用系统';
+        
+    } catch (error) {
+        console.error('加载个人信息失败:', error);
+        // 出错时使用默认值
+        document.getElementById('profileUsername').textContent = currentUser?.username || '管理员';
+        document.getElementById('profileWelcome').textContent = '欢迎使用系统';
+    }
 }
 
 // 打开个人信息编辑模态框
-function openProfileModal() {
-    const profileData = JSON.parse(localStorage.getItem('profileData') || '{}');
-    const username = profileData.username || currentUser.username || '管理员';
-    const welcome = profileData.welcome || '欢迎，777777';
-    
-    document.getElementById('editUsername').value = username;
-    document.getElementById('editWelcome').value = welcome;
-    
-    document.getElementById('profileModal').classList.add('active');
+async function openProfileModal() {
+    try {
+        const currentUsername = currentUser?.username;
+        if (!currentUsername) {
+            showMessage('用户信息不存在', 'error');
+            return;
+        }
+        
+        // 从API获取最新的个人信息
+        const response = await fetch(`${API_CONFIG.baseURL}/profile/${currentUsername}`);
+        
+        let displayName = currentUsername;
+        let welcomeMessage = '欢迎使用系统';
+        
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+                displayName = result.data.displayName || currentUsername;
+                welcomeMessage = result.data.welcomeMessage || '欢迎使用系统';
+            }
+        }
+        
+        document.getElementById('editUsername').value = displayName;
+        document.getElementById('editWelcome').value = welcomeMessage;
+        
+        document.getElementById('profileModal').classList.add('active');
+        
+    } catch (error) {
+        console.error('打开个人信息编辑模态框失败:', error);
+        showMessage('获取个人信息失败', 'error');
+    }
 }
 
 // 关闭个人信息编辑模态框
@@ -1132,25 +1177,62 @@ async function handleProfileSubmit(e) {
     e.preventDefault();
     
     const formData = new FormData(e.target);
-    const profileData = {
-        username: formData.get('username'),
-        welcome: formData.get('welcome')
-    };
+    const displayName = formData.get('username');
+    const welcomeMessage = formData.get('welcome');
+    
+    const currentUsername = currentUser?.username;
+    if (!currentUsername) {
+        showMessage('用户信息不存在', 'error');
+        return;
+    }
     
     try {
-        // 保存到本地存储
-        localStorage.setItem('profileData', JSON.stringify(profileData));
+        // 显示加载状态
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.innerHTML = '<span class="loading"></span> 保存中...';
+        submitBtn.disabled = true;
         
-        // 更新显示
-        document.getElementById('profileUsername').textContent = profileData.username;
-        document.getElementById('profileWelcome').textContent = profileData.welcome;
-        document.getElementById('currentUser').textContent = profileData.username;
+        // 调用API更新个人信息
+        const response = await fetch(`${API_CONFIG.baseURL}/profile/${currentUsername}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                displayName: displayName,
+                welcomeMessage: welcomeMessage
+            })
+        });
         
-        closeProfileModal();
-        showMessage('个人信息更新成功！', 'success');
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            // 更新页面显示
+            document.getElementById('profileUsername').textContent = displayName;
+            document.getElementById('profileWelcome').textContent = welcomeMessage;
+            document.getElementById('currentUser').textContent = displayName;
+            
+            closeProfileModal();
+            showMessage('个人信息更新成功！', 'success');
+        } else {
+            throw new Error(result.message || '更新失败');
+        }
+        
+        // 恢复按钮状态
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+        
     } catch (error) {
         console.error('更新个人信息失败:', error);
-        showMessage('更新个人信息失败，请重试', 'error');
+        showMessage(`更新个人信息失败: ${error.message}`, 'error');
+        
+        // 恢复按钮状态
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = '保存';
+            submitBtn.disabled = false;
+        }
     }
 }
 
@@ -1537,41 +1619,88 @@ window.navigateWeek = navigateWeek;
 // ==================== 酒店信息管理 ====================
 
 // 加载酒店信息
-function loadHotelInfo() {
+async function loadHotelInfo() {
     try {
-        const hotelInfo = JSON.parse(localStorage.getItem('hotelInfo')) || {
-            name: 'URO Hotel',
-            description: 'Hotel & Cafe & Bar'
-        };
-        
-        document.getElementById('hotelName').textContent = hotelInfo.name;
-        document.getElementById('hotelDescription').textContent = hotelInfo.description;
-        
-        // 更新侧边栏标题
-        const sidebarTitle = document.querySelector('.sidebar-header h2');
-        if (sidebarTitle) {
-            sidebarTitle.textContent = hotelInfo.name;
+        const currentUsername = currentUser?.username;
+        if (!currentUsername) {
+            console.warn('当前用户信息不存在，使用默认酒店信息');
+            const defaultHotelInfo = { name: 'URO Hotel', description: 'Hotel & Cafe & Bar' };
+            updateHotelDisplay(defaultHotelInfo);
+            return;
         }
         
-        // 更新页面标题
-        document.title = `${hotelInfo.name} 管理后台`;
+        const response = await fetch(`${API_CONFIG.baseURL}/hotel/${currentUsername}`);
+        
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+                updateHotelDisplay(result.data);
+                return;
+            }
+        }
+        
+        // API调用失败时，使用默认值
+        console.warn('获取酒店信息失败，使用默认值');
+        const defaultHotelInfo = { name: 'URO Hotel', description: 'Hotel & Cafe & Bar' };
+        updateHotelDisplay(defaultHotelInfo);
         
     } catch (error) {
         console.error('加载酒店信息失败:', error);
+        // 出错时使用默认值
+        const defaultHotelInfo = { name: 'URO Hotel', description: 'Hotel & Cafe & Bar' };
+        updateHotelDisplay(defaultHotelInfo);
     }
 }
 
+// 更新酒店信息显示的辅助函数
+function updateHotelDisplay(hotelInfo) {
+    document.getElementById('hotelName').textContent = hotelInfo.name || 'URO Hotel';
+    document.getElementById('hotelDescription').textContent = hotelInfo.description || 'Hotel & Cafe & Bar';
+    
+    // 更新侧边栏标题
+    const sidebarTitle = document.querySelector('.sidebar-header h2');
+    if (sidebarTitle) {
+        sidebarTitle.textContent = hotelInfo.name || 'URO Hotel';
+    }
+    
+    // 更新页面标题
+    document.title = `${hotelInfo.name || 'URO Hotel'} 管理后台`;
+}
+
 // 打开酒店信息编辑模态框
-function openHotelInfoModal() {
-    const modal = document.getElementById('hotelInfoModal');
-    const hotelName = document.getElementById('hotelName').textContent;
-    const hotelDescription = document.getElementById('hotelDescription').textContent;
-    
-    document.getElementById('editHotelName').value = hotelName;
-    document.getElementById('editHotelDescription').value = hotelDescription;
-    
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
+async function openHotelInfoModal() {
+    try {
+        const currentUsername = currentUser?.username;
+        if (!currentUsername) {
+            showMessage('用户信息不存在', 'error');
+            return;
+        }
+        
+        // 从API获取最新的酒店信息
+        const response = await fetch(`${API_CONFIG.baseURL}/hotel/${currentUsername}`);
+        
+        let hotelName = 'URO Hotel';
+        let hotelDescription = 'Hotel & Cafe & Bar';
+        
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+                hotelName = result.data.name || 'URO Hotel';
+                hotelDescription = result.data.description || 'Hotel & Cafe & Bar';
+            }
+        }
+        
+        document.getElementById('editHotelName').value = hotelName;
+        document.getElementById('editHotelDescription').value = hotelDescription;
+        
+        const modal = document.getElementById('hotelInfoModal');
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        
+    } catch (error) {
+        console.error('打开酒店信息编辑模态框失败:', error);
+        showMessage('获取酒店信息失败', 'error');
+    }
 }
 
 // 关闭酒店信息编辑模态框
@@ -1586,45 +1715,72 @@ async function handleHotelInfoSubmit(e) {
     e.preventDefault();
     
     const formData = new FormData(e.target);
-    const hotelInfo = {
-        name: formData.get('hotelName').trim(),
-        description: formData.get('hotelDescription').trim()
-    };
+    const hotelName = formData.get('hotelName').trim();
+    const hotelDescription = formData.get('hotelDescription').trim();
     
     // 验证输入
-    if (!hotelInfo.name) {
+    if (!hotelName) {
         showMessage('请输入酒店名称', 'error');
         return;
     }
     
-    if (!hotelInfo.description) {
+    if (!hotelDescription) {
         showMessage('请输入酒店描述', 'error');
         return;
     }
     
+    const currentUsername = currentUser?.username;
+    if (!currentUsername) {
+        showMessage('用户信息不存在', 'error');
+        return;
+    }
+    
     try {
-        // 保存到本地存储
-        localStorage.setItem('hotelInfo', JSON.stringify(hotelInfo));
+        // 显示加载状态
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const originalText = submitBtn.textContent;
+        submitBtn.innerHTML = '<span class="loading"></span> 保存中...';
+        submitBtn.disabled = true;
         
-        // 更新页面显示
-        document.getElementById('hotelName').textContent = hotelInfo.name;
-        document.getElementById('hotelDescription').textContent = hotelInfo.description;
+        // 调用API更新酒店信息
+        const response = await fetch(`${API_CONFIG.baseURL}/hotel/${currentUsername}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: hotelName,
+                description: hotelDescription
+            })
+        });
         
-        // 更新侧边栏标题
-        const sidebarTitle = document.querySelector('.sidebar-header h2');
-        if (sidebarTitle) {
-            sidebarTitle.textContent = hotelInfo.name;
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+            // 更新页面显示
+            const hotelInfo = { name: hotelName, description: hotelDescription };
+            updateHotelDisplay(hotelInfo);
+            
+            closeHotelInfoModal();
+            showMessage('酒店信息更新成功', 'success');
+        } else {
+            throw new Error(result.message || '更新失败');
         }
         
-        // 更新页面标题
-        document.title = `${hotelInfo.name} 管理后台`;
-        
-        closeHotelInfoModal();
-        showMessage('酒店信息更新成功', 'success');
+        // 恢复按钮状态
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
         
     } catch (error) {
         console.error('保存酒店信息失败:', error);
-        showMessage('保存失败，请重试', 'error');
+        showMessage(`保存酒店信息失败: ${error.message}`, 'error');
+        
+        // 恢复按钮状态
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        if (submitBtn) {
+            submitBtn.textContent = '保存';
+            submitBtn.disabled = false;
+        }
     }
 }
 

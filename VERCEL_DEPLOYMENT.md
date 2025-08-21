@@ -59,6 +59,8 @@ vercel
 | `VIKA_API_TOKEN` | 维格表 API Token | `uskXXXXXXXXXXXXXXXX` |
 | `VIKA_DATASHEET_ID` | 用户数据表 ID | `dstXXXXXXXXXXXXXX` |
 | `VIKA_SCHEDULE_DATASHEET_ID` | 工作日程数据表 ID | `dstXXXXXXXXXXXXXX` |
+| `VIKA_PROFILE_DATASHEET_ID` | 个人信息数据表 ID | `dstXXXXXXXXXXXXXX` |
+| `VIKA_HOTEL_DATASHEET_ID` | 酒店信息数据表 ID | `dstXXXXXXXXXXXXXX` |
 
 #### 配置步骤：
 1. 进入 Vercel 项目控制台
@@ -71,9 +73,9 @@ vercel
 
 部署完成后，访问你的 Vercel 域名：
 
-- 主页：`https://your-project.vercel.app`
-- 工作台：`https://your-project.vercel.app/dashboard`
-- API 测试：`https://your-project.vercel.app/api/test`
+- 主页：`https://top333.vercel.app`
+- 工作台：`https://top333.vercel.app/dashboard`
+- API 测试：`https://top333.vercel.app/api/health`
 
 ## 技术架构
 

@@ -9,6 +9,14 @@
       "destination": "/api/users"
     },
     {
+      "source": "/api/profile/(.*)",
+      "destination": "/api/profile"
+    },
+    {
+      "source": "/api/hotel/(.*)",
+      "destination": "/api/hotel"
+    },
+    {
       "source": "/dashboard",
       "destination": "/public/dashboard.html"
     },

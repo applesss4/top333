@@ -37,14 +37,14 @@ const API_CONFIG = {
         const override = (typeof window !== 'undefined' && (window.__API_BASE_URL__ || localStorage.getItem('API_BASE_URL')));
         if (override) return override;
         
-        // file:// 场景（直接双击打开 HTML）下无法使用相对路径，默认连接到本地后端 3002 端口
+        // file:// 场景（直接双击打开 HTML）下无法使用相对路径，默认连接到本地后端 3001 端口
         if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
-            return 'http://localhost:3002/api';
+            return 'http://localhost:3001/api';
         }
         
         if (this.isDevelopment) {
-            // 无论前端静态服务端口是多少（如 5500），开发环境默认固定指向本地后端 3002 端口
-            return 'http://localhost:3002/api';
+            // 无论前端静态服务端口是多少（如 5500），开发环境默认固定指向本地后端 3001 端口
+            return 'http://localhost:3001/api';
         } else {
             // 生产环境使用相对路径，指向无服务器函数
             return '/api';
