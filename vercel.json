@@ -3,7 +3,7 @@
   "routes": [
     { "handle": "filesystem" },
     { "src": "/api/users/(.*)", "dest": "/api/users" },
-
+    { "src": "/(.*\\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot))$", "headers": { "Cache-Control": "public, max-age=31536000, immutable" } },
     { "src": "/dashboard", "dest": "/dashboard.html" },
     { "src": "/", "dest": "/index.html" }
   ],
