@@ -278,7 +278,8 @@ module.exports = async (req, res) => {
                 });
             }
             
-            await callVikaAPI('DELETE', `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records/${scheduleId}`);
+            // Vika API 删除记录需要使用批量删除格式
+            await callVikaAPI('DELETE', `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records?recordIds=${scheduleId}`);
             
             res.status(200).json({
                 success: true,
