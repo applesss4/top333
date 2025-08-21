@@ -257,6 +257,32 @@
                 <section class="content-section" id="settings-section">
                     <h2>系统设置</h2>
                     
+                    <!-- 酒店基本信息设置 -->
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <h3>酒店基本信息</h3>
+                            <button class="btn btn-primary" id="editHotelInfoBtn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                                编辑信息
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div class="profile-info">
+                                <div class="info-item">
+                                    <span class="info-label">酒店名称：</span>
+                                    <span class="info-value" id="hotelName">URO Hotel</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">酒店描述：</span>
+                                    <span class="info-value" id="hotelDescription">Hotel & Cafe & Bar</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- 个人信息设置 -->
                     <div class="settings-card">
                         <div class="card-header">
@@ -443,6 +469,35 @@
                     <button type="button" class="btn btn-danger" id="shopConfirmDeleteBtn">删除</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- 酒店信息编辑模态框 -->
+    <div class="modal" id="hotelInfoModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>编辑酒店信息</h3>
+                <button class="modal-close" id="hotelInfoModalClose">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <form class="modal-body" id="hotelInfoForm">
+                <div class="form-group">
+                    <label for="editHotelName">酒店名称 *</label>
+                    <input type="text" id="editHotelName" name="hotelName" required placeholder="请输入酒店名称">
+                </div>
+                <div class="form-group">
+                    <label for="editHotelDescription">酒店描述 *</label>
+                    <input type="text" id="editHotelDescription" name="hotelDescription" required placeholder="请输入酒店描述">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="hotelInfoCancelBtn">取消</button>
+                    <button type="submit" class="btn btn-primary" id="hotelInfoSaveBtn">保存</button>
+                </div>
+            </form>
         </div>
     </div>
 </body>

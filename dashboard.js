@@ -85,6 +85,9 @@ function initializePage() {
     currentUser = JSON.parse(userData);
     document.getElementById('currentUser').textContent = currentUser.username || '管理员';
     
+    // 初始化酒店信息功能
+    initializeHotelInfoEvents();
+    
     // 加载工作日程数据
     loadScheduleData();
     
@@ -93,6 +96,9 @@ function initializePage() {
     
     // 加载个人信息
     loadProfileData();
+    
+    // 加载酒店信息
+    loadHotelInfo();
     
     // 设置默认日期为今天
     const today = new Date().toISOString().split('T')[0];
@@ -1391,3 +1397,138 @@ function getWeekStart(date) {
 
 // 导出周日程相关函数
 window.navigateWeek = navigateWeek;
+
+// ==================== 酒店信息管理 ====================
+
+// 加载酒店信息
+function loadHotelInfo() {
+    try {
+        const hotelInfo = JSON.parse(localStorage.getItem('hotelInfo')) || {
+            name: 'URO Hotel',
+            description: 'Hotel & Cafe & Bar'
+        };
+        
+        document.getElementById('hotelName').textContent = hotelInfo.name;
+        document.getElementById('hotelDescription').textContent = hotelInfo.description;
+        
+        // 更新侧边栏标题
+        const sidebarTitle = document.querySelector('.sidebar-header h2');
+        if (sidebarTitle) {
+            sidebarTitle.textContent = hotelInfo.name;
+        }
+        
+        // 更新页面标题
+        document.title = `${hotelInfo.name} 管理后台`;
+        
+    } catch (error) {
+        console.error('加载酒店信息失败:', error);
+    }
+}
+
+// 打开酒店信息编辑模态框
+function openHotelInfoModal() {
+    const modal = document.getElementById('hotelInfoModal');
+    const hotelName = document.getElementById('hotelName').textContent;
+    const hotelDescription = document.getElementById('hotelDescription').textContent;
+    
+    document.getElementById('editHotelName').value = hotelName;
+    document.getElementById('editHotelDescription').value = hotelDescription;
+    
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+// 关闭酒店信息编辑模态框
+function closeHotelInfoModal() {
+    const modal = document.getElementById('hotelInfoModal');
+    modal.style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+// 处理酒店信息表单提交
+async function handleHotelInfoSubmit(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const hotelInfo = {
+        name: formData.get('hotelName').trim(),
+        description: formData.get('hotelDescription').trim()
+    };
+    
+    // 验证输入
+    if (!hotelInfo.name) {
+        showMessage('请输入酒店名称', 'error');
+        return;
+    }
+    
+    if (!hotelInfo.description) {
+        showMessage('请输入酒店描述', 'error');
+        return;
+    }
+    
+    try {
+        // 保存到本地存储
+        localStorage.setItem('hotelInfo', JSON.stringify(hotelInfo));
+        
+        // 更新页面显示
+        document.getElementById('hotelName').textContent = hotelInfo.name;
+        document.getElementById('hotelDescription').textContent = hotelInfo.description;
+        
+        // 更新侧边栏标题
+        const sidebarTitle = document.querySelector('.sidebar-header h2');
+        if (sidebarTitle) {
+            sidebarTitle.textContent = hotelInfo.name;
+        }
+        
+        // 更新页面标题
+        document.title = `${hotelInfo.name} 管理后台`;
+        
+        closeHotelInfoModal();
+        showMessage('酒店信息更新成功', 'success');
+        
+    } catch (error) {
+        console.error('保存酒店信息失败:', error);
+        showMessage('保存失败，请重试', 'error');
+    }
+}
+
+// 在页面初始化时添加酒店信息相关的事件监听器
+function initializeHotelInfoEvents() {
+    // 编辑酒店信息按钮
+    const editHotelInfoBtn = document.getElementById('editHotelInfoBtn');
+    if (editHotelInfoBtn) {
+        editHotelInfoBtn.addEventListener('click', openHotelInfoModal);
+    }
+    
+    // 关闭模态框按钮
+    const hotelInfoModalClose = document.getElementById('hotelInfoModalClose');
+    if (hotelInfoModalClose) {
+        hotelInfoModalClose.addEventListener('click', closeHotelInfoModal);
+    }
+    
+    // 取消按钮
+    const hotelInfoCancelBtn = document.getElementById('hotelInfoCancelBtn');
+    if (hotelInfoCancelBtn) {
+        hotelInfoCancelBtn.addEventListener('click', closeHotelInfoModal);
+    }
+    
+    // 表单提交
+    const hotelInfoForm = document.getElementById('hotelInfoForm');
+    if (hotelInfoForm) {
+        hotelInfoForm.addEventListener('submit', handleHotelInfoSubmit);
+    }
+    
+    // 点击模态框背景关闭
+    const hotelInfoModal = document.getElementById('hotelInfoModal');
+    if (hotelInfoModal) {
+        hotelInfoModal.addEventListener('click', function(e) {
+            if (e.target === hotelInfoModal) {
+                closeHotelInfoModal();
+            }
+        });
+    }
+}
+
+// 导出酒店信息相关函数
+window.openHotelInfoModal = openHotelInfoModal;
+window.closeHotelInfoModal = closeHotelInfoModal;
