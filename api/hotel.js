@@ -111,7 +111,7 @@ export default async function handler(req, res) {
     } else if (method === 'PUT') {
       // 更新酒店信息
       const body = await parseJsonBody(req);
-      const { websiteName } = body;
+      const { websiteName, hotelName, username: newUsername } = body;
       
       // 先查找是否存在记录
       const existingResponse = await callVikaAPI(
@@ -120,8 +120,8 @@ export default async function handler(req, res) {
       );
       
       const hotelData = {
-        username,
-        websiteName: websiteName || '',
+        username: newUsername || username,
+        websiteName: hotelName || websiteName || 'URO Hotel',
         updatedAt: new Date().toISOString()
       };
       

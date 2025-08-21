@@ -31,7 +31,7 @@ async function callVika(method, endpoint, data = null) {
     };
     try {
         const resp = await axios({ method, url, headers, data });
-        return resp.data;
+        return { success: true, data: resp.data };
     } catch (err) {
         const e = new Error(err?.response?.data?.message || err?.response?.data?.msg || err?.message || 'Vika API error');
         e.status = err?.response?.status;

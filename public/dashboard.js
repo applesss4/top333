@@ -179,6 +179,27 @@ function bindEventListeners() {
     document.getElementById('confirmCancelBtn').addEventListener('click', closeConfirmModal);
     document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
     
+    // 基本信息编辑相关
+    const editHotelInfoBtn = document.getElementById('editHotelInfoBtn');
+    if (editHotelInfoBtn) {
+        editHotelInfoBtn.addEventListener('click', openBasicInfoModal);
+    }
+    
+    const basicInfoModalClose = document.getElementById('basicInfoModalClose');
+    if (basicInfoModalClose) {
+        basicInfoModalClose.addEventListener('click', closeBasicInfoModal);
+    }
+    
+    const basicInfoCancelBtn = document.getElementById('basicInfoCancelBtn');
+    if (basicInfoCancelBtn) {
+        basicInfoCancelBtn.addEventListener('click', closeBasicInfoModal);
+    }
+    
+    const basicInfoForm = document.getElementById('basicInfoForm');
+    if (basicInfoForm) {
+        basicInfoForm.addEventListener('submit', handleBasicInfoSubmit);
+    }
+    
     // 点击模态框外部关闭
     document.getElementById('scheduleModal').addEventListener('click', function(e) {
         if (e.target === this) closeScheduleModal();
@@ -1200,7 +1221,7 @@ async function openBasicInfoModal() {
         }
         
         // 获取基本信息
-        const response = await fetch(`${API_CONFIG.baseURL}/api/basic-info/${currentUsername}`);
+        const response = await fetch(`${API_CONFIG.baseURL}/api/hotel/${currentUsername}`);
         
         let username = currentUsername;
         let websiteName = '';
@@ -1220,7 +1241,7 @@ async function openBasicInfoModal() {
         
         // 填充表单字段
         document.getElementById('editUsername').value = username;
-        document.getElementById('editWebsiteName').value = websiteName;
+        document.getElementById('editHotelName').value = websiteName;
         
         document.getElementById('basicInfoModal').classList.add('active');
         
@@ -1242,7 +1263,7 @@ async function handleBasicInfoSubmit(e) {
     
     const formData = new FormData(e.target);
     const username = formData.get('username')?.trim() || '';
-    const websiteName = formData.get('websiteName')?.trim() || '';
+    const websiteName = formData.get('hotelName')?.trim() || '';
     
     const currentUsername = currentUser?.username;
     if (!currentUsername) {
@@ -1269,14 +1290,14 @@ async function handleBasicInfoSubmit(e) {
         submitBtn.disabled = true;
         
         // 更新基本信息
-        const response = await fetch(`${API_CONFIG.baseURL}/api/basic-info/${currentUsername}`, {
+        const response = await fetch(`${API_CONFIG.baseURL}/api/hotel/${currentUsername}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({ 
                 username: username,
-                websiteName: websiteName 
+                hotelName: websiteName 
             })
         });
         
@@ -1284,9 +1305,19 @@ async function handleBasicInfoSubmit(e) {
         
         if (response.ok && result.success) {
             // 更新页面显示
-            document.getElementById('basicInfoUsername').textContent = username;
-            document.getElementById('basicInfoWebsiteName').textContent = websiteName;
+            document.getElementById('profileUsername').textContent = username;
+            document.getElementById('hotelName').textContent = websiteName;
             document.getElementById('currentUser').textContent = username;
+            
+            // 更新localStorage中的用户数据
+            const userData = JSON.parse(localStorage.getItem('userData') || '{}');
+            userData.username = username;
+            localStorage.setItem('userData', JSON.stringify(userData));
+            
+            // 更新全局变量
+            if (currentUser) {
+                currentUser.username = username;
+            }
             
             closeBasicInfoModal();
             showMessage('基本信息更新成功！', 'success');
@@ -1535,6 +1566,8 @@ async function confirmShopDelete() {
 // 导出函数到全局作用域
 window.editShop = editShop;
 window.deleteShop = deleteShop;
+window.openBasicInfoModal = openBasicInfoModal;
+window.closeBasicInfoModal = closeBasicInfoModal;
 
 // ========== 周日程相关函数 ==========
 

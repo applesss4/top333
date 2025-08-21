@@ -80,7 +80,9 @@ function initializePage() {
     }
     
     currentUser = JSON.parse(userData);
-    document.getElementById('currentUser').textContent = currentUser.username || '管理员';
+    // 直接设置用户名为牛马打工人
+    currentUser.username = '牛马打工人';
+    document.getElementById('currentUser').textContent = '牛马打工人';
     
     // 初始化酒店信息功能
     initializeHotelInfoEvents();
@@ -1099,6 +1101,12 @@ function clearFormErrors() {
 // 加载个人信息数据
 async function loadProfileData() {
     try {
+        // 直接设置用户名为牛马打工人
+        document.getElementById('profileUsername').textContent = '牛马打工人';
+        document.getElementById('profileWelcome').textContent = '欢迎使用系统';
+        return;
+        
+        // 以下代码不再执行
         const currentUsername = currentUser?.username;
         if (!currentUsername) {
             console.warn('当前用户信息不存在，使用默认值');
@@ -1621,6 +1629,12 @@ window.navigateWeek = navigateWeek;
 // 加载酒店信息
 async function loadHotelInfo() {
     try {
+        // 直接设置酒店名称为牛马日常
+        const hotelInfo = { name: '牛马日常', description: 'Hotel & Cafe & Bar' };
+        updateHotelDisplay(hotelInfo);
+        return;
+        
+        // 以下代码不再执行
         const currentUsername = currentUser?.username;
         if (!currentUsername) {
             console.warn('当前用户信息不存在，使用默认酒店信息');
@@ -1654,17 +1668,18 @@ async function loadHotelInfo() {
 
 // 更新酒店信息显示的辅助函数
 function updateHotelDisplay(hotelInfo) {
-    document.getElementById('hotelName').textContent = hotelInfo.name || 'URO Hotel';
-    document.getElementById('hotelDescription').textContent = hotelInfo.description || 'Hotel & Cafe & Bar';
+    // 直接设置酒店名称为牛马日常
+    document.getElementById('hotelName').textContent = '牛马日常';
+    document.getElementById('hotelDescription').textContent = 'Hotel & Cafe & Bar';
     
     // 更新侧边栏标题
     const sidebarTitle = document.querySelector('.sidebar-header h2');
     if (sidebarTitle) {
-        sidebarTitle.textContent = hotelInfo.name || 'URO Hotel';
+        sidebarTitle.textContent = '牛马日常';
     }
     
     // 更新页面标题
-    document.title = `${hotelInfo.name || 'URO Hotel'} 管理后台`;
+    document.title = `牛马日常 管理后台`;
 }
 
 // 打开酒店信息编辑模态框
