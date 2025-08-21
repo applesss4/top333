@@ -123,9 +123,15 @@ function bindEventListeners() {
         if (e.target === this) closeConfirmModal();
     });
     
-    // 时间验证
-    document.getElementById('startTime').addEventListener('change', validateTimeRange);
-    document.getElementById('endTime').addEventListener('change', validateTimeRange);
+    // 时间验证和格式化
+    document.getElementById('startTime').addEventListener('change', function() {
+        formatTimeToHalfHour(this);
+        validateTimeRange();
+    });
+    document.getElementById('endTime').addEventListener('change', function() {
+        formatTimeToHalfHour(this);
+        validateTimeRange();
+    });
     
     // 系统设置相关事件
     document.getElementById('editProfileBtn').addEventListener('click', openProfileModal);
@@ -621,6 +627,29 @@ async function confirmDelete() {
         console.error('删除日程失败:', error);
         showMessage('删除失败，请重试', 'error');
     }
+}
+
+// 格式化时间为半小时间隔（00分或30分）
+function formatTimeToHalfHour(timeInput) {
+    if (!timeInput.value) return;
+    
+    const [hours, minutes] = timeInput.value.split(':');
+    const minutesNum = parseInt(minutes);
+    
+    let adjustedMinutes;
+    if (minutesNum <= 15) {
+        adjustedMinutes = '00';
+    } else if (minutesNum <= 45) {
+        adjustedMinutes = '30';
+    } else {
+        // 如果超过45分钟，进位到下一小时的00分
+        const hoursNum = parseInt(hours);
+        const nextHour = (hoursNum + 1) % 24;
+        timeInput.value = `${nextHour.toString().padStart(2, '0')}:00`;
+        return;
+    }
+    
+    timeInput.value = `${hours}:${adjustedMinutes}`;
 }
 
 // 验证时间范围
