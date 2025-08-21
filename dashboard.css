@@ -1577,17 +1577,10 @@ body {
     opacity: 0.7;
 }
 
-/* 周日程响应式设计 */
-@media (max-width: 1200px) {
-    .weekly-schedule-grid {
-        grid-template-columns: repeat(4, 1fr);
-    }
-}
-
+/* 周日程响应式设计 - 保持单行7列布局 */
 @media (max-width: 768px) {
     .weekly-schedule-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 10px;
+        gap: 8px;
     }
     
     .week-navigation {
@@ -1600,25 +1593,92 @@ body {
     }
     
     .day-schedules {
-        padding: 10px 6px;
-        min-height: 100px;
-        padding-bottom: 35px;
+        padding: 8px 4px;
+        min-height: 80px;
+        padding-bottom: 30px;
+    }
+    
+    .day-header {
+        padding: 8px 4px;
+    }
+    
+    .day-name {
+        font-size: 12px;
+    }
+    
+    .day-date {
+        font-size: 10px;
+    }
+    
+    .schedule-item {
+        padding: 4px;
+        font-size: 10px;
+    }
+    
+    .schedule-store {
+        font-size: 10px;
+    }
+    
+    .schedule-time {
+        font-size: 9px;
+    }
+    
+    .schedule-duration {
+        font-size: 8px;
+    }
+    
+    .add-day-schedule {
+        width: 24px;
+        height: 24px;
+        bottom: 4px;
     }
 }
 
 @media (max-width: 480px) {
     .weekly-schedule-grid {
-        grid-template-columns: 1fr;
+        gap: 6px;
     }
     
     .weekly-schedule-card .card-header {
         flex-direction: column;
         align-items: stretch;
         text-align: center;
+        gap: 10px;
     }
     
     .week-navigation {
         justify-content: center;
+        gap: 8px;
+    }
+    
+    .day-schedules {
+        padding: 6px 2px;
+        min-height: 60px;
+        padding-bottom: 25px;
+    }
+    
+    .day-header {
+        padding: 6px 2px;
+    }
+    
+    .day-name {
+        font-size: 10px;
+        margin-bottom: 2px;
+    }
+    
+    .day-date {
+        font-size: 9px;
+    }
+    
+    .no-schedule {
+        font-size: 9px;
+        margin-top: 10px;
+    }
+    
+    .add-day-schedule {
+        width: 20px;
+        height: 20px;
+        bottom: 2px;
     }
 }
 
