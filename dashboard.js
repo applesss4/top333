@@ -1237,12 +1237,6 @@ function renderWeeklySchedule(weekStart) {
                     `).join('')}
                     ${daySchedules.length === 0 ? '<div class="no-schedule">无安排</div>' : ''}
                 </div>
-                <button class="add-day-schedule" onclick="addDaySchedule('${dateStr}')">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                </button>
             </div>
         `;
     }).join('');
@@ -1298,12 +1292,7 @@ function getCurrentWeekStart() {
     return getWeekStart(new Date());
 }
 
-// 添加指定日期的日程
-function addDaySchedule(dateStr) {
-    // 打开日程模态框并预设日期
-    openScheduleModal(null);
-    document.getElementById('workDate').value = dateStr;
-}
+
 
 // 获取星期几的中文名称
 function getWeekDay(date) {
@@ -1333,4 +1322,3 @@ function getWeekStart(date) {
 
 // 导出周日程相关函数
 window.navigateWeek = navigateWeek;
-window.addDaySchedule = addDaySchedule;

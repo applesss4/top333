@@ -1497,29 +1497,7 @@ body {
     padding-bottom: 40px;
 }
 
-.add-day-schedule {
-    position: absolute;
-    bottom: 8px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #007bff;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    opacity: 0.7;
-}
 
-.add-day-schedule:hover {
-    opacity: 1;
-    transform: translateX(-50%) scale(1.1);
-}
 
 .schedule-store {
     font-weight: 600;
@@ -1627,11 +1605,7 @@ body {
         font-size: 8px;
     }
     
-    .add-day-schedule {
-        width: 24px;
-        height: 24px;
-        bottom: 4px;
-    }
+
 }
 
 @media (max-width: 480px) {
@@ -1675,11 +1649,7 @@ body {
         margin-top: 10px;
     }
     
-    .add-day-schedule {
-        width: 20px;
-        height: 20px;
-        bottom: 2px;
-    }
+
 }
 
 /* 减少动画模式支持 */
