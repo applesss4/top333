@@ -333,6 +333,8 @@ async function loadScheduleData() {
         
         const data = await response.json();
         scheduleData = data.records || [];
+        // 更新window对象上的引用
+        window.scheduleData = scheduleData;
         
         renderScheduleTable();
         updateDashboardStats();
@@ -845,12 +847,23 @@ function toggleTodayOverview() {
 
 // 显示店铺月统计
 function showShopMonthlyStats(contentDiv) {
+    console.log('显示店铺月统计');
+    console.log('当前scheduleData:', scheduleData);
+    console.log('当前shopData:', shopData);
+    
     const thisMonthStart = getMonthStart(new Date());
     const thisMonthEnd = getMonthEnd(new Date());
     
-    // 获取本月所有日程
+    // 获取本月所有日程 - 兼容多种日期字段名
     const monthSchedules = scheduleData.filter(s => {
-        const scheduleDate = new Date(s.workDate);
+        let scheduleDate;
+        if (s.date) {
+            scheduleDate = new Date(s.date);
+        } else if (s.workDate) {
+            scheduleDate = new Date(s.workDate);
+        } else {
+            return false;
+        }
         return scheduleDate >= thisMonthStart && scheduleDate <= thisMonthEnd;
     });
     
@@ -859,22 +872,34 @@ function showShopMonthlyStats(contentDiv) {
     // 按店铺分组统计
     const shopStats = {};
     monthSchedules.forEach(schedule => {
-        // 从shopData中获取正确的店铺名称
+        // 获取店铺信息 - 兼容多种字段名
+        let shopCode = schedule.shop || schedule.storeCode || schedule.store;
         let shopName = '未知店铺';
-        if (schedule.storeCode) {
-            const shop = shopData.find(s => s.id === schedule.storeCode || s.code === schedule.storeCode);
+        
+        if (shopCode) {
+            // 从shopData中查找店铺名称
+            const shop = shopData.find(s => s.id === shopCode || s.code === shopCode);
             if (shop) {
                 shopName = shop.name;
             } else {
-                // 如果找不到对应店铺，使用storeCode
-                shopName = schedule.storeCode;
+                // 使用getStoreName函数作为备选
+                shopName = getStoreName(shopCode);
             }
         }
         
         if (!shopStats[shopName]) {
             shopStats[shopName] = 0;
         }
-        shopStats[shopName] += calculateDuration(schedule.startTime, schedule.endTime);
+        
+        // 计算时长 - 兼容多种字段名
+        let duration = 0;
+        if (schedule.duration) {
+            duration = parseFloat(schedule.duration);
+        } else if (schedule.startTime && schedule.endTime) {
+            duration = calculateDuration(schedule.startTime, schedule.endTime);
+        }
+        
+        shopStats[shopName] += duration;
     });
     
     console.log('店铺统计数据:', shopStats);
@@ -1004,6 +1029,10 @@ window.editSchedule = editSchedule;
 window.deleteSchedule = deleteSchedule;
 window.changePage = changePage;
 window.API_CONFIG = API_CONFIG;
+// 暴露全局变量供调试使用
+window.scheduleData = scheduleData;
+window.shopData = shopData;
+window.isOverviewExpanded = isOverviewExpanded;
 
 // 优化移动端表单交互
 function optimizeMobileFormInputs() {
@@ -1137,6 +1166,9 @@ function loadShopData() {
         ];
         localStorage.setItem('shopData', JSON.stringify(shopData));
     }
+    
+    // 更新window对象上的引用
+    window.shopData = shopData;
     
     renderShopList();
     updateShopSelectors();
