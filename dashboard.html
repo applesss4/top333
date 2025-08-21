@@ -121,6 +121,10 @@
                                     <span class="stat-label">本周工作时长</span>
                                     <span class="stat-value" id="weekWorkHours">0小时</span>
                                 </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">本月工作时长</span>
+                                    <span class="stat-value" id="monthWorkHours">0小时</span>
+                                </div>
                             </div>
                         </div>
 
@@ -225,7 +229,51 @@
 
                 <section class="content-section" id="settings-section">
                     <h2>系统设置</h2>
-                    <p>系统设置功能开发中...</p>
+                    
+                    <!-- 个人信息设置 -->
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <h3>个人信息</h3>
+                            <button class="btn btn-primary" id="editProfileBtn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                                编辑信息
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div class="profile-info">
+                                <div class="info-item">
+                                    <span class="info-label">用户名：</span>
+                                    <span class="info-value" id="profileUsername">管理员</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">欢迎语：</span>
+                                    <span class="info-value" id="profileWelcome">欢迎，777777</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 店铺管理设置 -->
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <h3>店铺管理</h3>
+                            <button class="btn btn-primary" id="addShopBtn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                添加店铺
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div class="shop-list" id="shopList">
+                                <!-- 店铺列表将通过JavaScript动态加载 -->
+                            </div>
+                        </div>
+                    </div>
                 </section>
             </div>
         </main>
@@ -288,6 +336,80 @@
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" id="confirmCancelBtn">取消</button>
                     <button type="button" class="btn btn-danger" id="confirmDeleteBtn">删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 个人信息编辑模态框 -->
+    <div class="modal" id="profileModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>编辑个人信息</h3>
+                <button class="modal-close" id="profileModalClose">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <form class="modal-body" id="profileForm">
+                <div class="form-group">
+                    <label for="editUsername">用户名 *</label>
+                    <input type="text" id="editUsername" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="editWelcome">欢迎语 *</label>
+                    <input type="text" id="editWelcome" name="welcome" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="profileCancelBtn">取消</button>
+                    <button type="submit" class="btn btn-primary" id="profileSaveBtn">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 店铺管理模态框 -->
+    <div class="modal" id="shopModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="shopModalTitle">添加店铺</h3>
+                <button class="modal-close" id="shopModalClose">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <form class="modal-body" id="shopForm">
+                <div class="form-group">
+                    <label for="shopName">店铺名称 *</label>
+                    <input type="text" id="shopName" name="shopName" required>
+                </div>
+                <div class="form-group">
+                    <label for="shopCode">店铺代码 *</label>
+                    <input type="text" id="shopCode" name="shopCode" required placeholder="例如：main, branch1">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="shopCancelBtn">取消</button>
+                    <button type="submit" class="btn btn-primary" id="shopSaveBtn">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 店铺删除确认模态框 -->
+    <div class="modal" id="shopConfirmModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>确认删除店铺</h3>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除这个店铺吗？此操作不可撤销。</p>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="shopConfirmCancelBtn">取消</button>
+                    <button type="button" class="btn btn-danger" id="shopConfirmDeleteBtn">删除</button>
                 </div>
             </div>
         </div>

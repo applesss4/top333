@@ -1269,6 +1269,121 @@ body {
     color: #22543d;
 }
 
+/* 系统设置样式 */
+.settings-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 2rem;
+    overflow: hidden;
+}
+
+.settings-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.settings-card .card-header h3 {
+    margin: 0;
+    color: #2d3748;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.settings-card .card-content {
+    padding: 1.5rem;
+}
+
+/* 个人信息样式 */
+.profile-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f1f3f4;
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-weight: 500;
+    color: #4a5568;
+    min-width: 100px;
+    margin-right: 1rem;
+}
+
+.info-value {
+    color: #2d3748;
+    font-weight: 400;
+}
+
+/* 店铺列表样式 */
+.shop-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.shop-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.shop-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.shop-name {
+    font-weight: 500;
+    color: #2d3748;
+}
+
+.shop-code {
+    font-size: 0.875rem;
+    color: #718096;
+}
+
+.shop-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.shop-actions .btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.empty-shops {
+    text-align: center;
+    padding: 2rem;
+    color: #718096;
+}
+
+.empty-shops svg {
+    width: 48px;
+    height: 48px;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
 /* 减少动画模式支持 */
 @media (prefers-reduced-motion: reduce) {
     .sidebar,

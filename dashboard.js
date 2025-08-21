@@ -4,6 +4,8 @@ let scheduleData = [];
 let currentPage = 1;
 let itemsPerPage = 10;
 let editingScheduleId = null;
+let shopData = [];
+let editingShopId = null;
 
 // API配置 - 根据环境动态设置
 const API_CONFIG = {
@@ -51,6 +53,12 @@ function initializePage() {
     
     // 加载工作日程数据
     loadScheduleData();
+    
+    // 加载店铺数据
+    loadShopData();
+    
+    // 加载个人信息
+    loadProfileData();
     
     // 设置默认日期为今天
     const today = new Date().toISOString().split('T')[0];
@@ -118,6 +126,22 @@ function bindEventListeners() {
     // 时间验证
     document.getElementById('startTime').addEventListener('change', validateTimeRange);
     document.getElementById('endTime').addEventListener('change', validateTimeRange);
+    
+    // 系统设置相关事件
+    document.getElementById('editProfileBtn').addEventListener('click', openProfileModal);
+    document.getElementById('profileModalClose').addEventListener('click', closeProfileModal);
+    document.getElementById('profileCancelBtn').addEventListener('click', closeProfileModal);
+    document.getElementById('profileForm').addEventListener('submit', handleProfileSubmit);
+    
+    // 店铺管理相关事件
+    document.getElementById('addShopBtn').addEventListener('click', () => openShopModal());
+    document.getElementById('shopModalClose').addEventListener('click', closeShopModal);
+    document.getElementById('shopCancelBtn').addEventListener('click', closeShopModal);
+    document.getElementById('shopForm').addEventListener('submit', handleShopSubmit);
+    
+    // 店铺删除确认模态框
+    document.getElementById('shopConfirmCancelBtn').addEventListener('click', closeShopConfirmModal);
+    document.getElementById('shopConfirmDeleteBtn').addEventListener('click', confirmShopDelete);
 }
 
 // 更新当前时间
@@ -655,6 +679,8 @@ function updateDashboardStats() {
     const today = new Date().toISOString().split('T')[0];
     const thisWeekStart = getWeekStart(new Date());
     const thisWeekEnd = getWeekEnd(new Date());
+    const thisMonthStart = getMonthStart(new Date());
+    const thisMonthEnd = getMonthEnd(new Date());
     
     // 计算今日工作时长
     const todaySchedules = scheduleData.filter(s => s.workDate === today);
@@ -671,8 +697,18 @@ function updateDashboardStats() {
         return total + calculateDuration(schedule.startTime, schedule.endTime);
     }, 0);
     
+    // 计算本月工作时长
+    const monthSchedules = scheduleData.filter(s => {
+        const scheduleDate = new Date(s.workDate);
+        return scheduleDate >= thisMonthStart && scheduleDate <= thisMonthEnd;
+    });
+    const monthHours = monthSchedules.reduce((total, schedule) => {
+        return total + calculateDuration(schedule.startTime, schedule.endTime);
+    }, 0);
+    
     document.getElementById('todayWorkHours').textContent = `${todayHours}小时`;
     document.getElementById('weekWorkHours').textContent = `${weekHours}小时`;
+    document.getElementById('monthWorkHours').textContent = `${monthHours}小时`;
 }
 
 // 获取本周开始日期
@@ -689,6 +725,23 @@ function getWeekEnd(date) {
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekStart.getDate() + 6);
     return weekEnd;
+}
+
+// 获取本月开始日期
+function getMonthStart(date) {
+    const start = new Date(date);
+    start.setDate(1);
+    start.setHours(0, 0, 0, 0);
+    return start;
+}
+
+// 获取本月结束日期
+function getMonthEnd(date) {
+    const end = new Date(date);
+    end.setMonth(end.getMonth() + 1);
+    end.setDate(0);
+    end.setHours(23, 59, 59, 999);
+    return end;
 }
 
 // 显示加载状态
@@ -802,3 +855,282 @@ function clearFormErrors() {
         input.style.borderColor = '';
     });
 }
+
+// ========== 系统设置相关函数 ==========
+
+// 加载个人信息数据
+function loadProfileData() {
+    const profileData = JSON.parse(localStorage.getItem('profileData') || '{}');
+    const username = profileData.username || currentUser.username || '管理员';
+    const welcome = profileData.welcome || '欢迎，777777';
+    
+    document.getElementById('profileUsername').textContent = username;
+    document.getElementById('profileWelcome').textContent = welcome;
+}
+
+// 打开个人信息编辑模态框
+function openProfileModal() {
+    const profileData = JSON.parse(localStorage.getItem('profileData') || '{}');
+    const username = profileData.username || currentUser.username || '管理员';
+    const welcome = profileData.welcome || '欢迎，777777';
+    
+    document.getElementById('editUsername').value = username;
+    document.getElementById('editWelcome').value = welcome;
+    
+    document.getElementById('profileModal').classList.add('active');
+}
+
+// 关闭个人信息编辑模态框
+function closeProfileModal() {
+    document.getElementById('profileModal').classList.remove('active');
+    document.getElementById('profileForm').reset();
+}
+
+// 处理个人信息提交
+async function handleProfileSubmit(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const profileData = {
+        username: formData.get('username'),
+        welcome: formData.get('welcome')
+    };
+    
+    try {
+        // 保存到本地存储
+        localStorage.setItem('profileData', JSON.stringify(profileData));
+        
+        // 更新显示
+        document.getElementById('profileUsername').textContent = profileData.username;
+        document.getElementById('profileWelcome').textContent = profileData.welcome;
+        document.getElementById('currentUser').textContent = profileData.username;
+        
+        closeProfileModal();
+        showMessage('个人信息更新成功！', 'success');
+    } catch (error) {
+        console.error('更新个人信息失败:', error);
+        showMessage('更新个人信息失败，请重试', 'error');
+    }
+}
+
+// 加载店铺数据
+function loadShopData() {
+    const savedShops = localStorage.getItem('shopData');
+    if (savedShops) {
+        shopData = JSON.parse(savedShops);
+    } else {
+        // 默认店铺数据
+        shopData = [
+            { id: 'main', name: '主店', code: 'main' },
+            { id: 'branch1', name: '分店1', code: 'branch1' },
+            { id: 'branch2', name: '分店2', code: 'branch2' }
+        ];
+        localStorage.setItem('shopData', JSON.stringify(shopData));
+    }
+    
+    renderShopList();
+    updateShopSelectors();
+}
+
+// 渲染店铺列表
+function renderShopList() {
+    const shopList = document.getElementById('shopList');
+    
+    if (shopData.length === 0) {
+        shopList.innerHTML = `
+            <div class="empty-shops">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9,22 9,12 15,12 15,22"></polyline>
+                </svg>
+                <p>暂无店铺，点击上方按钮添加店铺</p>
+            </div>
+        `;
+        return;
+    }
+    
+    shopList.innerHTML = shopData.map(shop => `
+        <div class="shop-item">
+            <div class="shop-info">
+                <div class="shop-name">${shop.name}</div>
+                <div class="shop-code">代码: ${shop.code}</div>
+            </div>
+            <div class="shop-actions">
+                <button class="btn btn-secondary" onclick="editShop('${shop.id}')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    编辑
+                </button>
+                <button class="btn btn-danger" onclick="deleteShop('${shop.id}')">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3,6 5,6 21,6"></polyline>
+                        <path d="M19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2"></path>
+                    </svg>
+                    删除
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 更新店铺选择器
+function updateShopSelectors() {
+    const selectors = ['workStore', 'storeFilter'];
+    
+    selectors.forEach(selectorId => {
+        const selector = document.getElementById(selectorId);
+        if (selector) {
+            // 保存当前选中值
+            const currentValue = selector.value;
+            
+            // 清空选项（保留第一个默认选项）
+            const firstOption = selector.firstElementChild;
+            selector.innerHTML = '';
+            if (firstOption) {
+                selector.appendChild(firstOption);
+            }
+            
+            // 添加店铺选项
+            shopData.forEach(shop => {
+                const option = document.createElement('option');
+                option.value = shop.code;
+                option.textContent = shop.name;
+                selector.appendChild(option);
+            });
+            
+            // 恢复选中值
+            if (currentValue && shopData.find(shop => shop.code === currentValue)) {
+                selector.value = currentValue;
+            }
+        }
+    });
+}
+
+// 打开店铺管理模态框
+function openShopModal(shopId = null) {
+    editingShopId = shopId;
+    
+    if (shopId) {
+        const shop = shopData.find(s => s.id === shopId);
+        if (shop) {
+            document.getElementById('shopModalTitle').textContent = '编辑店铺';
+            document.getElementById('shopName').value = shop.name;
+            document.getElementById('shopCode').value = shop.code;
+        }
+    } else {
+        document.getElementById('shopModalTitle').textContent = '添加店铺';
+        document.getElementById('shopForm').reset();
+    }
+    
+    document.getElementById('shopModal').classList.add('active');
+}
+
+// 关闭店铺管理模态框
+function closeShopModal() {
+    document.getElementById('shopModal').classList.remove('active');
+    document.getElementById('shopForm').reset();
+    editingShopId = null;
+}
+
+// 处理店铺提交
+async function handleShopSubmit(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const shopName = formData.get('shopName').trim();
+    const shopCode = formData.get('shopCode').trim();
+    
+    // 验证输入
+    if (!shopName || !shopCode) {
+        showMessage('请填写完整的店铺信息', 'error');
+        return;
+    }
+    
+    // 检查代码是否重复（编辑时排除自己）
+    const existingShop = shopData.find(shop => shop.code === shopCode && shop.id !== editingShopId);
+    if (existingShop) {
+        showMessage('店铺代码已存在，请使用其他代码', 'error');
+        return;
+    }
+    
+    try {
+        if (editingShopId) {
+            // 编辑店铺
+            const shopIndex = shopData.findIndex(shop => shop.id === editingShopId);
+            if (shopIndex !== -1) {
+                shopData[shopIndex] = {
+                    ...shopData[shopIndex],
+                    name: shopName,
+                    code: shopCode
+                };
+            }
+        } else {
+            // 添加新店铺
+            const newShop = {
+                id: Date.now().toString(),
+                name: shopName,
+                code: shopCode
+            };
+            shopData.push(newShop);
+        }
+        
+        // 保存到本地存储
+        localStorage.setItem('shopData', JSON.stringify(shopData));
+        
+        // 更新显示
+        renderShopList();
+        updateShopSelectors();
+        
+        closeShopModal();
+        showMessage(editingShopId ? '店铺更新成功！' : '店铺添加成功！', 'success');
+    } catch (error) {
+        console.error('保存店铺失败:', error);
+        showMessage('保存店铺失败，请重试', 'error');
+    }
+}
+
+// 编辑店铺
+function editShop(shopId) {
+    openShopModal(shopId);
+}
+
+// 删除店铺
+function deleteShop(shopId) {
+    editingShopId = shopId;
+    document.getElementById('shopConfirmModal').classList.add('active');
+}
+
+// 关闭店铺删除确认模态框
+function closeShopConfirmModal() {
+    document.getElementById('shopConfirmModal').classList.remove('active');
+    editingShopId = null;
+}
+
+// 确认删除店铺
+async function confirmShopDelete() {
+    if (!editingShopId) return;
+    
+    try {
+        // 从数组中移除店铺
+        shopData = shopData.filter(shop => shop.id !== editingShopId);
+        
+        // 保存到本地存储
+        localStorage.setItem('shopData', JSON.stringify(shopData));
+        
+        // 更新显示
+        renderShopList();
+        updateShopSelectors();
+        
+        closeShopConfirmModal();
+        showMessage('店铺删除成功！', 'success');
+    } catch (error) {
+        console.error('删除店铺失败:', error);
+        showMessage('删除店铺失败，请重试', 'error');
+    }
+}
+
+// 导出函数到全局作用域
+window.editShop = editShop;
+window.deleteShop = deleteShop;
