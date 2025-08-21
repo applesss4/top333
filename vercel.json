@@ -2,6 +2,7 @@
   "version": 2,
   "routes": [
     { "handle": "filesystem" },
+    { "src": "/api/users/(.*)", "dest": "/api/users" },
     { "src": "/api/health", "dest": "/api/hello" },
     { "src": "/dashboard", "dest": "/dashboard.html" },
     { "src": "/", "dest": "/index.html" }
