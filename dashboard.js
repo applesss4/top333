@@ -1193,9 +1193,19 @@ window.deleteShop = deleteShop;
 
 // 初始化周日程
 function initializeWeeklySchedule() {
-    const currentWeekStart = getWeekStart(new Date());
-    renderWeeklySchedule(currentWeekStart);
-    updateWeekDisplay(currentWeekStart);
+    // 如果有日程数据，显示包含最新日程的周，否则显示当前周
+    let weekStart;
+    if (scheduleData && scheduleData.length > 0) {
+        // 找到最新的日程日期
+        const latestSchedule = scheduleData.reduce((latest, current) => {
+            return new Date(current.workDate) > new Date(latest.workDate) ? current : latest;
+        });
+        weekStart = getWeekStart(new Date(latestSchedule.workDate));
+    } else {
+        weekStart = getWeekStart(new Date());
+    }
+    renderWeeklySchedule(weekStart);
+    updateWeekDisplay(weekStart);
 }
 
 // 渲染周日程
