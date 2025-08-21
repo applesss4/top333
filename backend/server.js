@@ -685,6 +685,79 @@ app.put('/api/hotel/:username', async (req, res) => {
     }
 });
 
+// ============ 基本信息管理 API（合并个人信息和酒店信息）============
+// 获取基本信息（酒店名称和用户名）
+app.get('/api/basic-info/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        if (!username) {
+            return res.status(400).json({ success: false, message: '用户名参数缺失' });
+        }
+        
+        // 从用户表中查找用户的基本信息
+        const filter = encodeURIComponent(`{username} = "${username}"`);
+        const response = await callVika('GET', `/datasheets/${VIKA_CONFIG.datasheetId}/records?fieldKey=name&filterByFormula=${filter}`);
+        
+        if (!response.success || !Array.isArray(response.data?.records) || response.data.records.length === 0) {
+            return res.status(404).json({ success: false, message: '用户不存在' });
+        }
+        
+        const userRecord = response.data.records[0];
+        const basicInfo = {
+            username: userRecord.fields.username || '',
+            websiteName: userRecord.fields.websiteName || userRecord.fields.hotelName || 'URO Hotel'
+        };
+        
+        return res.status(200).json({ success: true, data: basicInfo });
+    } catch (e) {
+        console.error('获取基本信息失败:', e);
+        return res.status(e.status || 500).json({ success: false, message: e.message || '服务器错误', details: e.details });
+    }
+});
+
+// 更新基本信息（酒店名称和用户名）
+app.put('/api/basic-info/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        const { websiteName } = req.body;
+        
+        if (!username) {
+            return res.status(400).json({ success: false, message: '用户名参数缺失' });
+        }
+        
+        // 查找用户记录
+        const filter = encodeURIComponent(`{username} = "${username}"`);
+        const response = await callVika('GET', `/datasheets/${VIKA_CONFIG.datasheetId}/records?fieldKey=name&filterByFormula=${filter}`);
+        
+        if (!response.success || !Array.isArray(response.data?.records) || response.data.records.length === 0) {
+            return res.status(404).json({ success: false, message: '用户不存在' });
+        }
+        
+        const userRecord = response.data.records[0];
+        const recordId = userRecord.recordId;
+        
+        // 更新字段
+        const fieldsToUpdate = {};
+        if (websiteName !== undefined) {
+            fieldsToUpdate.websiteName = websiteName;
+            fieldsToUpdate.hotelName = websiteName; // 同时更新hotelName字段以保持兼容性
+        }
+        
+        const payload = {
+            records: [{ recordId, fields: fieldsToUpdate }],
+            fieldKey: 'name'
+        };
+        
+        const updateResp = await callVika('PATCH', `/datasheets/${VIKA_CONFIG.datasheetId}/records`, payload);
+        if (!updateResp.success) throw new Error('更新基本信息失败');
+        
+        return res.status(200).json({ success: true, message: '基本信息更新成功' });
+    } catch (e) {
+        console.error('更新基本信息失败:', e);
+        return res.status(e.status || 500).json({ success: false, message: e.message || '服务器错误', details: e.details });
+    }
+});
+
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
