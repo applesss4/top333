@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URO Hotel 管理后台</title>
+    <link rel="stylesheet" href="dashboard.css">
+    <script src="dashboard.js" defer></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- 侧边栏导航 -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>URO Hotel</h2>
+                <p class="user-info">欢迎，<span id="currentUser">管理员</span></p>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="nav-item active">
+                        <a href="#dashboard" data-section="dashboard">
+                            <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="3" width="7" height="7"></rect>
+                                <rect x="14" y="14" width="7" height="7"></rect>
+                                <rect x="3" y="14" width="7" height="7"></rect>
+                            </svg>
+                            仪表盘
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#schedule" data-section="schedule">
+                            <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="16" y1="2" x2="16" y2="6"></line>
+                                <line x1="8" y1="2" x2="8" y2="6"></line>
+                                <line x1="3" y1="10" x2="21" y2="10"></line>
+                            </svg>
+                            工作日程
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#rooms" data-section="rooms">
+                            <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                <polyline points="9,22 9,12 15,12 15,22"></polyline>
+                            </svg>
+                            房间管理
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#staff" data-section="staff">
+                            <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                            员工管理
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#settings" data-section="settings">
+                            <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                            </svg>
+                            系统设置
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="logout-btn" id="logoutBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16,17 21,12 16,7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    退出登录
+                </button>
+            </div>
+        </aside>
+
+        <!-- 主内容区域 -->
+        <main class="main-content">
+            <!-- 顶部导航栏 -->
+            <header class="top-header">
+                <div class="header-left">
+                    <button class="menu-toggle" id="menuToggle">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
+                    <h1 class="page-title" id="pageTitle">仪表盘</h1>
+                </div>
+                <div class="header-right">
+                    <div class="current-time" id="currentTime"></div>
+                </div>
+            </header>
+
+            <!-- 内容区域 -->
+            <div class="content-wrapper">
+                <!-- 仪表盘页面 -->
+                <section class="content-section active" id="dashboard-section">
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card" id="todayOverviewCard" style="cursor: pointer;">
+                            <div class="card-header">
+                                <h3>今日概览</h3>
+                                <svg class="card-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <polyline points="12,6 12,12 16,14"></polyline>
+                                </svg>
+                            </div>
+                            <div class="card-content" id="todayOverviewContent">
+                                <div class="stat-item">
+                                    <span class="stat-label">今日工作时长</span>
+                                    <span class="stat-value" id="todayWorkHours">0小时</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">本周工作时长</span>
+                                    <span class="stat-value" id="weekWorkHours">0小时</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-label">本月工作时长</span>
+                                    <span class="stat-value" id="monthWorkHours">0小时</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <h3>快速操作</h3>
+                                <svg class="card-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"></path>
+                                </svg>
+                            </div>
+                            <div class="card-content">
+                                <button class="quick-action-btn" data-action="add-schedule">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                    添加工作日程
+                                </button>
+                                <button class="quick-action-btn" data-action="view-schedule">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    </svg>
+                                    查看日程表
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 周日程模块 -->
+                    <div class="weekly-schedule-container">
+                        <div class="dashboard-card weekly-schedule-card">
+                            <div class="card-header">
+                                <h3>本周工作排班</h3>
+                                <div class="week-navigation">
+                                    <button class="week-nav-btn" id="prevWeekBtn">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="15,18 9,12 15,6"></polyline>
+                                        </svg>
+                                    </button>
+                                    <span class="week-range" id="weekDisplay">2024年1月1日 - 1月7日</span>
+                                    <button class="week-nav-btn" id="nextWeekBtn">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="9,18 15,12 9,6"></polyline>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-content">
+                                <div class="weekly-schedule-grid" id="weeklyGrid">
+                                    <!-- 周日程内容将通过JavaScript动态生成 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 工作日程页面 -->
+                <section class="content-section" id="schedule-section">
+                    <div class="section-header">
+                        <h2>工作日程管理</h2>
+                        <button class="btn btn-primary" id="addScheduleBtn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            添加日程
+                        </button>
+                    </div>
+
+                    <!-- 筛选器 -->
+                    <div class="filters">
+                        <div class="filter-group">
+                            <label for="storeFilter">店铺筛选：</label>
+                            <select id="storeFilter" class="filter-select">
+                                <option value="">全部店铺</option>
+                                <option value="main">主店</option>
+                                <option value="branch1">分店1</option>
+                                <option value="branch2">分店2</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label for="dateFilter">日期筛选：</label>
+                            <input type="date" id="dateFilter" class="filter-input">
+                        </div>
+                        <button class="btn btn-secondary" id="resetFilters">重置筛选</button>
+                    </div>
+
+                    <!-- 工作日程表格 -->
+                    <div class="table-container">
+                        <table class="schedule-table" id="scheduleTable">
+                            <thead>
+                                <tr>
+                                    <th>工作店铺</th>
+                                    <th>工作日期</th>
+                                    <th>星期</th>
+                                    <th>开始时间</th>
+                                    <th>结束时间</th>
+                                    <th>工作时长</th>
+                                    <th>备注</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scheduleTableBody">
+                                <!-- 数据将通过JavaScript动态加载 -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 分页 -->
+                    <div class="pagination" id="pagination">
+                        <!-- 分页按钮将通过JavaScript动态生成 -->
+                    </div>
+                </section>
+
+                <!-- 其他页面占位符 -->
+                <section class="content-section" id="rooms-section">
+                    <h2>房间管理</h2>
+                    <p>房间管理功能开发中...</p>
+                </section>
+
+                <section class="content-section" id="staff-section">
+                    <h2>员工管理</h2>
+                    <p>员工管理功能开发中...</p>
+                </section>
+
+                <section class="content-section" id="settings-section">
+                    <h2>系统设置</h2>
+                    
+                    <!-- 酒店基本信息设置 -->
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <h3>酒店基本信息</h3>
+                            <button class="btn btn-primary" id="editHotelInfoBtn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                                编辑信息
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div class="profile-info">
+                                <div class="info-item">
+                                    <span class="info-label">酒店名称：</span>
+                                    <span class="info-value" id="hotelName">URO Hotel</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">酒店描述：</span>
+                                    <span class="info-value" id="hotelDescription">Hotel & Cafe & Bar</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 个人信息设置 -->
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <h3>个人信息</h3>
+                            <button class="btn btn-primary" id="editProfileBtn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                                编辑信息
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div class="profile-info">
+                                <div class="info-item">
+                                    <span class="info-label">用户名：</span>
+                                    <span class="info-value" id="profileUsername">管理员</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">欢迎语：</span>
+                                    <span class="info-value" id="profileWelcome">欢迎，777777</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 店铺管理设置 -->
+                    <div class="settings-card">
+                        <div class="card-header">
+                            <h3>店铺管理</h3>
+                            <button class="btn btn-primary" id="addShopBtn">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                添加店铺
+                            </button>
+                        </div>
+                        <div class="card-content">
+                            <div class="shop-list" id="shopList">
+                                <!-- 店铺列表将通过JavaScript动态加载 -->
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- 添加/编辑日程模态框 -->
+    <div class="modal" id="scheduleModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">添加工作日程</h3>
+                <button class="modal-close" id="modalClose">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <form class="modal-body" id="scheduleForm">
+                <div class="form-group">
+                    <label for="workStore">工作店铺 *</label>
+                    <select id="workStore" name="workStore" required>
+                        <option value="">请选择店铺</option>
+                        <option value="main">主店</option>
+                        <option value="branch1">分店1</option>
+                        <option value="branch2">分店2</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="workDate">工作日期 *</label>
+                    <input type="date" id="workDate" name="workDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="startTime">开始时间 *</label>
+                    <select id="startTime" name="startTime" required>
+                        <option value="">请选择开始时间</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="endTime">结束时间 *</label>
+                    <select id="endTime" name="endTime" required>
+                        <option value="">请选择结束时间</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="notes">备注</label>
+                    <textarea id="notes" name="notes" rows="3" placeholder="可选的工作备注信息"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">取消</button>
+                    <button type="submit" class="btn btn-primary" id="saveBtn">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 确认删除模态框 -->
+    <div class="modal" id="confirmModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>确认删除</h3>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除这条工作日程记录吗？此操作不可撤销。</p>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="confirmCancelBtn">取消</button>
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 个人信息编辑模态框 -->
+    <div class="modal" id="profileModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>编辑个人信息</h3>
+                <button class="modal-close" id="profileModalClose">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <form class="modal-body" id="profileForm">
+                <div class="form-group">
+                    <label for="editUsername">用户名 *</label>
+                    <input type="text" id="editUsername" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="editWelcome">欢迎语 *</label>
+                    <input type="text" id="editWelcome" name="welcome" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="profileCancelBtn">取消</button>
+                    <button type="submit" class="btn btn-primary" id="profileSaveBtn">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 店铺管理模态框 -->
+    <div class="modal" id="shopModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="shopModalTitle">添加店铺</h3>
+                <button class="modal-close" id="shopModalClose">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <form class="modal-body" id="shopForm">
+                <div class="form-group">
+                    <label for="shopName">店铺名称 *</label>
+                    <input type="text" id="shopName" name="shopName" required>
+                </div>
+                <div class="form-group">
+                    <label for="shopCode">店铺代码 *</label>
+                    <input type="text" id="shopCode" name="shopCode" required placeholder="例如：main, branch1">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="shopCancelBtn">取消</button>
+                    <button type="submit" class="btn btn-primary" id="shopSaveBtn">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 店铺删除确认模态框 -->
+    <div class="modal" id="shopConfirmModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>确认删除店铺</h3>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除这个店铺吗？此操作不可撤销。</p>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="shopConfirmCancelBtn">取消</button>
+                    <button type="button" class="btn btn-danger" id="shopConfirmDeleteBtn">删除</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 酒店信息编辑模态框 -->
+    <div class="modal" id="hotelInfoModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>编辑酒店信息</h3>
+                <button class="modal-close" id="hotelInfoModalClose">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <form class="modal-body" id="hotelInfoForm">
+                <div class="form-group">
+                    <label for="editHotelName">酒店名称 *</label>
+                    <input type="text" id="editHotelName" name="hotelName" required placeholder="请输入酒店名称">
+                </div>
+                <div class="form-group">
+                    <label for="editHotelDescription">酒店描述 *</label>
+                    <input type="text" id="editHotelDescription" name="hotelDescription" required placeholder="请输入酒店描述">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="hotelInfoCancelBtn">取消</button>
+                    <button type="submit" class="btn btn-primary" id="hotelInfoSaveBtn">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
