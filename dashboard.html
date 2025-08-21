@@ -156,6 +156,33 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- 周日程模块 -->
+                    <div class="weekly-schedule-container">
+                        <div class="dashboard-card weekly-schedule-card">
+                            <div class="card-header">
+                                <h3>本周工作排班</h3>
+                                <div class="week-navigation">
+                                    <button class="week-nav-btn" id="prevWeekBtn">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="15,18 9,12 15,6"></polyline>
+                                        </svg>
+                                    </button>
+                                    <span class="week-range" id="weekDisplay">2024年1月1日 - 1月7日</span>
+                                    <button class="week-nav-btn" id="nextWeekBtn">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <polyline points="9,18 15,12 9,6"></polyline>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-content">
+                                <div class="weekly-schedule-grid" id="weeklyGrid">
+                                    <!-- 周日程内容将通过JavaScript动态生成 -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </section>
 
                 <!-- 工作日程页面 -->

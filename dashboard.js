@@ -60,6 +60,9 @@ function initializePage() {
     // 加载个人信息
     loadProfileData();
     
+    // 初始化周日程
+    initializeWeeklySchedule();
+    
     // 设置默认日期为今天
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('workDate').value = today;
@@ -148,6 +151,15 @@ function bindEventListeners() {
     // 店铺删除确认模态框
     document.getElementById('shopConfirmCancelBtn').addEventListener('click', closeShopConfirmModal);
     document.getElementById('shopConfirmDeleteBtn').addEventListener('click', confirmShopDelete);
+    
+    // 绑定周导航事件
+    document.getElementById('prevWeekBtn')?.addEventListener('click', () => {
+        navigateWeek(-1);
+    });
+    
+    document.getElementById('nextWeekBtn')?.addEventListener('click', () => {
+        navigateWeek(1);
+    });
 }
 
 // 更新当前时间
@@ -573,6 +585,10 @@ async function handleScheduleSubmit(e) {
             
             // 重新加载数据
             await loadScheduleData();
+            
+            // 刷新周日程视图
+            const currentWeekStart = getCurrentWeekStart();
+            renderWeeklySchedule(currentWeekStart);
         } else {
             throw new Error(result.message || '保存失败');
         }
@@ -622,6 +638,10 @@ async function confirmDelete() {
         showMessage('日程删除成功', 'success');
         closeConfirmModal();
         loadScheduleData();
+        
+        // 刷新周日程视图
+        const currentWeekStart = getCurrentWeekStart();
+        renderWeeklySchedule(currentWeekStart);
         
     } catch (error) {
         console.error('删除日程失败:', error);
@@ -1163,3 +1183,161 @@ async function confirmShopDelete() {
 // 导出函数到全局作用域
 window.editShop = editShop;
 window.deleteShop = deleteShop;
+
+// ========== 周日程相关函数 ==========
+
+// 初始化周日程
+function initializeWeeklySchedule() {
+    const currentWeekStart = getWeekStart(new Date());
+    renderWeeklySchedule(currentWeekStart);
+    updateWeekDisplay(currentWeekStart);
+}
+
+// 渲染周日程
+function renderWeeklySchedule(weekStart) {
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    
+    // 获取本周的日程数据
+    const weekSchedules = scheduleData.filter(schedule => {
+        const scheduleDate = new Date(schedule.workDate);
+        return scheduleDate >= weekStart && scheduleDate <= weekEnd;
+    });
+    
+    const weeklyGrid = document.getElementById('weeklyGrid');
+    if (!weeklyGrid) return;
+    
+    // 生成一周的日期
+    const weekDays = [];
+    for (let i = 0; i < 7; i++) {
+        const day = new Date(weekStart);
+        day.setDate(weekStart.getDate() + i);
+        weekDays.push(day);
+    }
+    
+    // 渲染周日程网格
+    weeklyGrid.innerHTML = weekDays.map(day => {
+        const dateStr = day.toISOString().split('T')[0];
+        const daySchedules = weekSchedules.filter(s => s.workDate === dateStr);
+        const isToday = dateStr === new Date().toISOString().split('T')[0];
+        
+        return `
+            <div class="day-column ${isToday ? 'today' : ''}">
+                <div class="day-header">
+                    <div class="day-name">${getWeekDay(day)}</div>
+                    <div class="day-date">${day.getDate()}</div>
+                </div>
+                <div class="day-schedules">
+                    ${daySchedules.map(schedule => `
+                        <div class="schedule-item">
+                            <div class="schedule-store">${getStoreName(schedule.workStore)}</div>
+                            <div class="schedule-time">${schedule.startTime} - ${schedule.endTime}</div>
+                            <div class="schedule-duration">${calculateDuration(schedule.startTime, schedule.endTime)}h</div>
+                        </div>
+                    `).join('')}
+                    ${daySchedules.length === 0 ? '<div class="no-schedule">无安排</div>' : ''}
+                </div>
+                <button class="add-day-schedule" onclick="addDaySchedule('${dateStr}')">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+// 更新周显示
+function updateWeekDisplay(weekStart) {
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    
+    const weekDisplay = document.getElementById('weekDisplay');
+    if (weekDisplay) {
+        const startStr = `${weekStart.getMonth() + 1}月${weekStart.getDate()}日`;
+        const endStr = `${weekEnd.getMonth() + 1}月${weekEnd.getDate()}日`;
+        weekDisplay.textContent = `${startStr} - ${endStr}`;
+    }
+}
+
+// 导航到上一周或下一周
+function navigateWeek(direction) {
+    const currentWeekDisplay = document.getElementById('weekDisplay');
+    if (!currentWeekDisplay) return;
+    
+    // 获取当前显示的周开始日期
+    const currentWeekStart = getCurrentWeekStart();
+    const newWeekStart = new Date(currentWeekStart);
+    newWeekStart.setDate(currentWeekStart.getDate() + (direction * 7));
+    
+    renderWeeklySchedule(newWeekStart);
+    updateWeekDisplay(newWeekStart);
+}
+
+// 获取当前显示的周开始日期
+function getCurrentWeekStart() {
+    // 尝试从周显示元素中解析当前周，如果失败则返回本周开始
+    const weekDisplay = document.getElementById('weekDisplay');
+    if (weekDisplay && weekDisplay.textContent) {
+        try {
+            // 解析显示的周范围，例如 "1月1日 - 1月7日"
+            const text = weekDisplay.textContent;
+            const match = text.match(/(\d+)月(\d+)日/);
+            if (match) {
+                const month = parseInt(match[1]) - 1; // 月份从0开始
+                const day = parseInt(match[2]);
+                const year = new Date().getFullYear();
+                const date = new Date(year, month, day);
+                return getWeekStart(date);
+            }
+        } catch (e) {
+            console.warn('解析当前周失败，使用默认值');
+        }
+    }
+    return getWeekStart(new Date());
+}
+
+// 添加指定日期的日程
+function addDaySchedule(dateStr) {
+    // 打开日程模态框并预设日期
+    openScheduleModal(null);
+    document.getElementById('workDate').value = dateStr;
+}
+
+// 获取星期几的中文名称
+function getWeekDay(date) {
+    const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    return weekDays[date.getDay()];
+}
+
+// 获取店铺名称
+function getStoreName(storeId) {
+    const storeNames = {
+        'main': '主店',
+        'branch1': '分店1',
+        'branch2': '分店2'
+    };
+    return storeNames[storeId] || storeId;
+}
+
+// 计算工作时长
+function calculateDuration(startTime, endTime) {
+    const start = new Date(`2000-01-01 ${startTime}`);
+    const end = new Date(`2000-01-01 ${endTime}`);
+    const diffMs = end - start;
+    const diffHours = diffMs / (1000 * 60 * 60);
+    return diffHours.toFixed(1);
+}
+
+// 获取周开始日期（周一）
+function getWeekStart(date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // 调整为周一开始
+    return new Date(d.setDate(diff));
+}
+
+// 导出周日程相关函数
+window.navigateWeek = navigateWeek;
+window.addDaySchedule = addDaySchedule;

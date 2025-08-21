@@ -1384,6 +1384,244 @@ body {
     opacity: 0.5;
 }
 
+/* 周日程模块样式 */
+.weekly-schedule-container {
+    margin-top: 30px;
+    width: 100%;
+}
+
+.weekly-schedule-card {
+    width: 100%;
+    max-width: none;
+}
+
+.weekly-schedule-card .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.week-navigation {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.week-nav-btn {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.week-nav-btn:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.week-nav-btn:active {
+    transform: translateY(1px);
+}
+
+.week-range {
+    font-weight: 500;
+    color: #495057;
+    font-size: 14px;
+    min-width: 140px;
+    text-align: center;
+}
+
+.weekly-schedule-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.day-column {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    position: relative;
+}
+
+.day-column:hover {
+    border-color: #007bff;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
+}
+
+.day-column.today {
+    border-color: #28a745;
+    background: #f8fff9;
+}
+
+.day-column.today .day-header {
+    background: #28a745;
+}
+
+.day-header {
+    background: #007bff;
+    color: white;
+    padding: 12px 8px;
+    text-align: center;
+    font-weight: 500;
+}
+
+.day-name {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.day-date {
+    display: block;
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+.day-schedules {
+    padding: 15px 8px;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 40px;
+}
+
+.add-day-schedule {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    opacity: 0.7;
+}
+
+.add-day-schedule:hover {
+    opacity: 1;
+    transform: translateX(-50%) scale(1.1);
+}
+
+.schedule-store {
+    font-weight: 600;
+    color: #007bff;
+    margin-bottom: 2px;
+    font-size: 12px;
+}
+
+.schedule-duration {
+    color: #6c757d;
+    font-size: 10px;
+    margin-top: 2px;
+}
+
+.no-schedule {
+    color: #6c757d;
+    font-size: 13px;
+    text-align: center;
+    font-style: italic;
+    margin-top: 20px;
+}
+
+.schedule-item {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.schedule-item:hover {
+    border-color: #007bff;
+    box-shadow: 0 1px 4px rgba(0, 123, 255, 0.1);
+}
+
+.schedule-location {
+    font-weight: 600;
+    color: #007bff;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.schedule-time {
+    color: #495057;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.schedule-time svg {
+    width: 12px;
+    height: 12px;
+    opacity: 0.7;
+}
+
+/* 周日程响应式设计 */
+@media (max-width: 1200px) {
+    .weekly-schedule-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .weekly-schedule-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    
+    .week-navigation {
+        gap: 10px;
+    }
+    
+    .week-range {
+        font-size: 12px;
+        min-width: 120px;
+    }
+    
+    .day-schedules {
+        padding: 10px 6px;
+        min-height: 100px;
+        padding-bottom: 35px;
+    }
+}
+
+@media (max-width: 480px) {
+    .weekly-schedule-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .weekly-schedule-card .card-header {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+    
+    .week-navigation {
+        justify-content: center;
+    }
+}
+
 /* 减少动画模式支持 */
 @media (prefers-reduced-motion: reduce) {
     .sidebar,
