@@ -755,9 +755,9 @@ function updateDashboardStats() {
         return total + calculateDuration(schedule.startTime, schedule.endTime);
     }, 0);
     
-    document.getElementById('todayWorkHours').textContent = `${todayHours}小时`;
-    document.getElementById('weekWorkHours').textContent = `${weekHours}小时`;
-    document.getElementById('monthWorkHours').textContent = `${monthHours}小时`;
+    document.getElementById('todayWorkHours').textContent = `${todayHours.toFixed(1)}小时`;
+    document.getElementById('weekWorkHours').textContent = `${weekHours.toFixed(1)}小时`;
+    document.getElementById('monthWorkHours').textContent = `${monthHours.toFixed(1)}小时`;
 }
 
 // 获取本周开始日期
@@ -1232,7 +1232,7 @@ function renderWeeklySchedule(weekStart) {
                         <div class="schedule-item">
                             <div class="schedule-store">${getStoreName(schedule.workStore)}</div>
                             <div class="schedule-time">${schedule.startTime} - ${schedule.endTime}</div>
-                            <div class="schedule-duration">${calculateDuration(schedule.startTime, schedule.endTime)}h</div>
+                            <div class="schedule-duration">${calculateDuration(schedule.startTime, schedule.endTime).toFixed(1)}h</div>
                         </div>
                     `).join('')}
                     ${daySchedules.length === 0 ? '<div class="no-schedule">无安排</div>' : ''}
@@ -1321,14 +1321,7 @@ function getStoreName(storeId) {
     return storeNames[storeId] || storeId;
 }
 
-// 计算工作时长
-function calculateDuration(startTime, endTime) {
-    const start = new Date(`2000-01-01 ${startTime}`);
-    const end = new Date(`2000-01-01 ${endTime}`);
-    const diffMs = end - start;
-    const diffHours = diffMs / (1000 * 60 * 60);
-    return diffHours.toFixed(1);
-}
+
 
 // 获取周开始日期（周一）
 function getWeekStart(date) {
