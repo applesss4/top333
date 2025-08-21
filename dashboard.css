@@ -1439,62 +1439,65 @@ body {
 }
 
 .weekly-schedule-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
     margin-top: 20px;
 }
 
-.day-column {
+.day-row {
+    display: flex;
     background: #f8f9fa;
     border: 1px solid #e9ecef;
     border-radius: 8px;
     overflow: hidden;
     transition: all 0.2s ease;
-    position: relative;
+    min-height: 60px;
 }
 
-.day-column:hover {
+.day-row:hover {
     border-color: #007bff;
     box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
 }
 
-.day-column.today {
+.day-row.today {
     border-color: #28a745;
     background: #f8fff9;
 }
 
-.day-column.today .day-header {
+.day-row.today .day-header {
     background: #28a745;
 }
 
 .day-header {
     background: #007bff;
     color: white;
-    padding: 12px 8px;
-    text-align: center;
+    padding: 15px 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-width: 120px;
     font-weight: 500;
 }
 
 .day-name {
-    display: block;
     font-size: 14px;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .day-date {
-    display: block;
     font-size: 12px;
     opacity: 0.9;
 }
 
 .day-schedules {
-    padding: 15px 8px;
-    min-height: 120px;
+    flex: 1;
+    padding: 15px 20px;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    padding-bottom: 40px;
+    justify-content: center;
 }
 
 
@@ -1555,7 +1558,7 @@ body {
     opacity: 0.7;
 }
 
-/* 周日程响应式设计 - 保持单行7列布局 */
+/* 周日程响应式设计 - 纵向布局 */
 @media (max-width: 768px) {
     .weekly-schedule-grid {
         gap: 8px;
@@ -1570,14 +1573,13 @@ body {
         min-width: 120px;
     }
     
-    .day-schedules {
-        padding: 8px 4px;
-        min-height: 80px;
-        padding-bottom: 30px;
+    .day-row {
+        min-height: 50px;
     }
     
     .day-header {
-        padding: 8px 4px;
+        padding: 10px 15px;
+        min-width: 100px;
     }
     
     .day-name {
@@ -1588,13 +1590,17 @@ body {
         font-size: 10px;
     }
     
+    .day-schedules {
+        padding: 10px 15px;
+    }
+    
     .schedule-item {
-        padding: 4px;
-        font-size: 10px;
+        padding: 6px;
+        font-size: 11px;
     }
     
     .schedule-store {
-        font-size: 10px;
+        font-size: 11px;
     }
     
     .schedule-time {
@@ -1602,10 +1608,13 @@ body {
     }
     
     .schedule-duration {
-        font-size: 8px;
+        font-size: 9px;
     }
     
-
+    .no-schedule {
+        font-size: 11px;
+        margin-top: 5px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -1625,14 +1634,19 @@ body {
         gap: 8px;
     }
     
-    .day-schedules {
-        padding: 6px 2px;
-        min-height: 60px;
-        padding-bottom: 25px;
+    .day-row {
+        flex-direction: column;
+        min-height: auto;
     }
     
     .day-header {
-        padding: 6px 2px;
+        min-width: auto;
+        padding: 8px 15px;
+        text-align: center;
+    }
+    
+    .day-schedules {
+        padding: 8px 15px;
     }
     
     .day-name {
@@ -1644,12 +1658,27 @@ body {
         font-size: 9px;
     }
     
+    .schedule-item {
+        padding: 5px;
+        font-size: 10px;
+    }
+    
+    .schedule-store {
+        font-size: 10px;
+    }
+    
+    .schedule-time {
+        font-size: 9px;
+    }
+    
+    .schedule-duration {
+        font-size: 8px;
+    }
+    
     .no-schedule {
         font-size: 9px;
         margin-top: 10px;
     }
-    
-
 }
 
 /* 减少动画模式支持 */

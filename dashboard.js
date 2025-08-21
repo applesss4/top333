@@ -1222,10 +1222,10 @@ function renderWeeklySchedule(weekStart) {
         const isToday = dateStr === new Date().toISOString().split('T')[0];
         
         return `
-            <div class="day-column ${isToday ? 'today' : ''}">
+            <div class="day-row ${isToday ? 'today' : ''}">
                 <div class="day-header">
                     <div class="day-name">${getWeekDay(day)}</div>
-                    <div class="day-date">${day.getDate()}</div>
+                    <div class="day-date">${day.getMonth() + 1}月${day.getDate()}日</div>
                 </div>
                 <div class="day-schedules">
                     ${daySchedules.map(schedule => `
