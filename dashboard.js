@@ -100,6 +100,12 @@ function initializePage() {
     // 加载酒店信息
     loadHotelInfo();
     
+    // 绑定今日概览卡片点击事件
+    const todayOverviewCard = document.getElementById('todayOverviewCard');
+    if (todayOverviewCard) {
+        todayOverviewCard.addEventListener('click', toggleTodayOverview);
+    }
+    
     // 设置默认日期为今天
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('workDate').value = today;
@@ -817,6 +823,87 @@ function updateDashboardStats() {
     document.getElementById('todayWorkHours').textContent = `${todayHours.toFixed(1)}小时`;
     document.getElementById('weekWorkHours').textContent = `${weekHours.toFixed(1)}小时`;
     document.getElementById('monthWorkHours').textContent = `${monthHours.toFixed(1)}小时`;
+}
+
+// 今日概览卡片切换状态
+let isOverviewExpanded = false;
+
+// 切换今日概览显示模式
+function toggleTodayOverview() {
+    const contentDiv = document.getElementById('todayOverviewContent');
+    
+    if (!isOverviewExpanded) {
+        // 切换到店铺月统计模式
+        showShopMonthlyStats(contentDiv);
+        isOverviewExpanded = true;
+    } else {
+        // 恢复到原始模式
+        showOriginalStats(contentDiv);
+        isOverviewExpanded = false;
+    }
+}
+
+// 显示店铺月统计
+function showShopMonthlyStats(contentDiv) {
+    const thisMonthStart = getMonthStart(new Date());
+    const thisMonthEnd = getMonthEnd(new Date());
+    
+    // 获取本月所有日程
+    const monthSchedules = scheduleData.filter(s => {
+        const scheduleDate = new Date(s.workDate);
+        return scheduleDate >= thisMonthStart && scheduleDate <= thisMonthEnd;
+    });
+    
+    // 按店铺分组统计
+    const shopStats = {};
+    monthSchedules.forEach(schedule => {
+        const shopName = getStoreName(schedule.storeCode);
+        if (!shopStats[shopName]) {
+            shopStats[shopName] = 0;
+        }
+        shopStats[shopName] += calculateDuration(schedule.startTime, schedule.endTime);
+    });
+    
+    // 生成新的HTML内容
+    let newContent = '';
+    Object.keys(shopStats).forEach(shopName => {
+        newContent += `
+            <div class="stat-item">
+                <span class="stat-label">${shopName} 本月时长</span>
+                <span class="stat-value">${shopStats[shopName].toFixed(1)}小时</span>
+            </div>`;
+    });
+    
+    // 如果没有店铺数据，显示提示
+    if (Object.keys(shopStats).length === 0) {
+        newContent = `
+            <div class="stat-item">
+                <span class="stat-label">本月暂无工作记录</span>
+                <span class="stat-value">0小时</span>
+            </div>`;
+    }
+    
+    contentDiv.innerHTML = newContent;
+}
+
+// 显示原始统计
+function showOriginalStats(contentDiv) {
+    contentDiv.innerHTML = `
+        <div class="stat-item">
+            <span class="stat-label">今日工作时长</span>
+            <span class="stat-value" id="todayWorkHours">0小时</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">本周工作时长</span>
+            <span class="stat-value" id="weekWorkHours">0小时</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">本月工作时长</span>
+            <span class="stat-value" id="monthWorkHours">0小时</span>
+        </div>`;
+    
+    // 重新更新统计数据
+    updateDashboardStats();
 }
 
 // 获取本周开始日期

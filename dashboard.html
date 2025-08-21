@@ -104,7 +104,7 @@
                 <!-- 仪表盘页面 -->
                 <section class="content-section active" id="dashboard-section">
                     <div class="dashboard-grid">
-                        <div class="dashboard-card">
+                        <div class="dashboard-card" id="todayOverviewCard" style="cursor: pointer;">
                             <div class="card-header">
                                 <h3>今日概览</h3>
                                 <svg class="card-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -112,7 +112,7 @@
                                     <polyline points="12,6 12,12 16,14"></polyline>
                                 </svg>
                             </div>
-                            <div class="card-content">
+                            <div class="card-content" id="todayOverviewContent">
                                 <div class="stat-item">
                                     <span class="stat-label">今日工作时长</span>
                                     <span class="stat-value" id="todayWorkHours">0小时</span>
