@@ -253,6 +253,8 @@ body {
     align-items: center;
     min-height: 400px;
     padding: 40px 20px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 /* 数字时钟样式 */
@@ -262,9 +264,12 @@ body {
     left: 0;
     transform: none;
     z-index: 10;
-    white-space: nowrap;
-    width: auto;
-    display: block;
+    width: 100%;
+    max-width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
 }
 
 .clock-display {
@@ -275,7 +280,10 @@ body {
     display: inline-block;
     backdrop-filter: blur(10px);
     border: 3px solid #F5F0E8;
-    min-width: 350px;
+    max-width: calc(100vw - 80px);
+    min-width: 0;
+    width: auto;
+    box-sizing: border-box;
     text-align: center;
 }
 
@@ -363,13 +371,20 @@ body {
     
     .clock-display {
         padding: 20px 30px;
-        min-width: 280px;
+        max-width: calc(100vw - 40px);
+        min-width: 0;
+        width: 100%;
+        box-sizing: border-box;
         border-radius: 15px;
     }
     
     .time {
         font-size: 2.5rem;
         letter-spacing: 1px;
+        word-break: keep-all;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     
     .date {
@@ -452,6 +467,36 @@ body {
     }
 }
 
+/* 极小屏幕设备优化 */
+@media (max-width: 360px) {
+    .main-clock-section {
+        min-height: 200px;
+        padding: 10px 5px;
+    }
+    
+    .clock-display {
+        padding: 10px 15px;
+        max-width: calc(100vw - 10px);
+        min-width: 0;
+        width: 100%;
+        box-sizing: border-box;
+        border-radius: 10px;
+    }
+    
+    .time {
+        font-size: 1.5rem;
+        letter-spacing: 0.5px;
+        word-break: keep-all;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .date {
+        font-size: 0.8rem;
+    }
+}
+
 /* 小屏幕设备优化 */
 @media (max-width: 480px) {
     .header {
@@ -478,12 +523,19 @@ body {
     
     .clock-display {
         padding: 15px 20px;
-        min-width: 250px;
+        max-width: calc(100vw - 20px);
+        min-width: 0;
+        width: 100%;
+        box-sizing: border-box;
         border-radius: 12px;
     }
     
     .time {
         font-size: 2rem;
+        word-break: keep-all;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
     
     .date {
