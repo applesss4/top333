@@ -10,11 +10,13 @@ let editingShopId = null;
 // API配置 - 根据环境动态设置
 const API_CONFIG = {
     isDevelopment: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
+    isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
     get baseURL() {
         const override = (typeof window !== 'undefined' && (window.__API_BASE_URL__ || localStorage.getItem('API_BASE_URL')));
         if (override) return override;
         if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
-            return 'http://localhost:3002/api';
+            // 移动端应用使用Vercel部署的API
+            return 'https://ab-work-schedule.vercel.app/api';
         }
         if (this.isDevelopment) {
             const protocol = window.location.protocol || 'http:';
@@ -33,12 +35,38 @@ const VIKA_CONFIG = {
 
 // 页面初始化
 document.addEventListener('DOMContentLoaded', function() {
+    // 检测平台并初始化
+    detectPlatformAndInitialize();
+    
     initializePage();
     bindEventListeners();
     initializeTimeSelectors();
     updateCurrentTime();
     setInterval(updateCurrentTime, 1000);
 });
+
+// 检测平台并初始化
+function detectPlatformAndInitialize() {
+    // 检测是否为移动端
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isFileProtocol = window.location.protocol === 'file:';
+    
+    console.log(`[平台检测] 移动端: ${isMobile}, 文件协议: ${isFileProtocol}`);
+    
+    // 更新API_CONFIG
+    API_CONFIG.isMobile = isMobile;
+    
+    // 如果是移动端应用（通常以file://协议打开），确保使用正确的API地址
+    if (isFileProtocol) {
+        console.log('[平台检测] 检测到文件协议访问，可能是移动端应用');
+        localStorage.setItem('API_BASE_URL', 'https://ab-work-schedule.vercel.app/api');
+        console.log('[平台检测] API基础URL已设置为Vercel部署地址');
+    }
+    
+    // 显示当前环境信息
+    console.log(`[平台检测] 当前API基础URL: ${API_CONFIG.baseURL}`);
+    console.log(`[平台检测] 开发环境: ${API_CONFIG.isDevelopment}`);
+}
 
 // 初始化时间选择器
 function initializeTimeSelectors() {
@@ -325,13 +353,26 @@ function handleQuickAction(e) {
 async function loadScheduleData() {
     try {
         showLoading();
-        const response = await fetch(`${API_CONFIG.baseURL}/schedule`);
+        
+        // 添加调试信息
+        console.log(`[调试信息] 环境检测: 移动端=${API_CONFIG.isMobile}, 开发环境=${API_CONFIG.isDevelopment}`);
+        console.log(`[调试信息] API基础URL: ${API_CONFIG.baseURL}`);
+        
+        const apiUrl = `${API_CONFIG.baseURL}/schedule`;
+        console.log(`[调试信息] 请求URL: ${apiUrl}`);
+        
+        const response = await fetch(apiUrl);
         
         if (!response.ok) {
-            throw new Error('获取数据失败');
+            const errorText = await response.text();
+            console.error(`[调试信息] API响应错误: ${response.status} ${response.statusText}`);
+            console.error(`[调试信息] 错误详情: ${errorText}`);
+            throw new Error(`获取数据失败: ${response.status} ${response.statusText}`);
         }
         
         const data = await response.json();
+        console.log(`[调试信息] API响应成功:`, data);
+        
         scheduleData = data.records || [];
         // 更新window对象上的引用
         window.scheduleData = scheduleData;
@@ -345,8 +386,8 @@ async function loadScheduleData() {
         hideLoading();
         
     } catch (error) {
-        console.error('加载工作日程数据失败:', error);
-        showMessage('加载数据失败，请检查网络连接', 'error');
+        console.error('[调试信息] 加载工作日程数据失败:', error);
+        showMessage(`加载数据失败: ${error.message}`, 'error');
         hideLoading();
     }
 }
@@ -606,6 +647,11 @@ async function handleScheduleSubmit(e) {
     try {
         showLoading();
         
+        // 添加调试信息
+        console.log(`[调试信息] 提交日程数据: `, scheduleData);
+        console.log(`[调试信息] 环境检测: 移动端=${API_CONFIG.isMobile}, 开发环境=${API_CONFIG.isDevelopment}`);
+        console.log(`[调试信息] API基础URL: ${API_CONFIG.baseURL}`);
+        
         let response;
         let url;
         let method;
@@ -628,6 +674,8 @@ async function handleScheduleSubmit(e) {
             method = 'POST';
         }
         
+        console.log(`[调试信息] 请求URL: ${url}, 方法: ${method}`);
+        
         response = await fetch(url, {
             method: method,
             headers: {
@@ -637,11 +685,24 @@ async function handleScheduleSubmit(e) {
         });
         
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || '保存失败');
+            const errorText = await response.text();
+            let errorMessage = '保存失败';
+            
+            try {
+                const errorData = JSON.parse(errorText);
+                errorMessage = errorData.message || errorData.error || '保存失败';
+            } catch (e) {
+                errorMessage = `保存失败: ${response.status} ${response.statusText}`;
+            }
+            
+            console.error(`[调试信息] API响应错误: ${response.status} ${response.statusText}`);
+            console.error(`[调试信息] 错误详情: ${errorText}`);
+            
+            throw new Error(errorMessage);
         }
         
         const result = await response.json();
+        console.log(`[调试信息] API响应成功:`, result);
         
         if (result.success) {
             // 关闭模态框
@@ -661,7 +722,7 @@ async function handleScheduleSubmit(e) {
         }
         
     } catch (error) {
-        console.error('保存日程失败:', error);
+        console.error('[调试信息] 保存日程失败:', error);
         showMessage(error.message || '保存失败，请检查网络连接并重试', 'error');
     } finally {
         hideLoading();
