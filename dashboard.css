@@ -7,7 +7,7 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background-color: #f5f7fa;
+    background-color: #F5F0E8;
     color: #333;
     line-height: 1.6;
 }
@@ -21,7 +21,7 @@ body {
 /* 侧边栏样式 */
 .sidebar {
     width: 260px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #8b4513 0%, #a0522d 50%, #d2b48c 100%);
     color: white;
     position: fixed;
     height: 100vh;
@@ -624,10 +624,42 @@ body {
         transform: translateX(-100%);
         width: 280px;
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        padding-bottom: 80px; /* 为退出按钮留出更多空间 */
     }
     
     .sidebar.mobile-open {
         transform: translateX(0);
+    }
+    
+    /* 移动端侧边栏底部按钮优化 */
+    .sidebar-footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 280px;
+        padding: 1.5rem;
+        background: inherit;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        z-index: 1001;
+    }
+    
+    .logout-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        font-size: 1rem;
+        font-weight: 500;
+        min-height: 48px; /* 确保足够的触摸目标大小 */
+        touch-action: manipulation; /* 优化触摸响应 */
     }
     
     /* 遮罩层 */
@@ -859,6 +891,20 @@ body {
     /* 超小屏幕适配 */
     .sidebar {
         width: 100vw;
+        padding-bottom: 80px; /* 为退出按钮留出更多空间 */
+    }
+    
+    /* 超小屏幕侧边栏底部按钮优化 */
+    .sidebar-footer {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100vw;
+        padding: 1rem;
+        background: inherit;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        z-index: 1001;
     }
     
     .top-header {
@@ -937,8 +983,21 @@ body {
     }
     
     .logout-btn {
-        padding: 0.75rem;
-        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        font-size: 0.9rem;
+        font-weight: 500;
+        min-height: 48px; /* 确保足够的触摸目标大小 */
+        touch-action: manipulation; /* 优化触摸响应 */
     }
 }
 
