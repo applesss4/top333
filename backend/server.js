@@ -18,6 +18,7 @@ const VIKA_CONFIG = {
     scheduleDatasheetId: process.env.VIKA_SCHEDULE_DATASHEET_ID,
     profileDatasheetId: process.env.VIKA_PROFILE_DATASHEET_ID || process.env.VIKA_DATASHEET_ID, // 复用用户表或单独配置
     hotelDatasheetId: process.env.VIKA_HOTEL_DATASHEET_ID || process.env.VIKA_DATASHEET_ID, // 复用用户表或单独配置
+    basicInfoDatasheetId: process.env.VIKA_BASIC_INFO_DATASHEET_ID || process.env.VIKA_DATASHEET_ID, // 基本信息数据表
     baseUrl: process.env.VIKA_BASE_URL || 'https://vika.cn/fusion/v1'
 };
 
@@ -694,30 +695,25 @@ app.get('/api/basic-info/:username', async (req, res) => {
             return res.status(400).json({ success: false, message: '用户名参数缺失' });
         }
         
-        // 同时从用户表和网站信息表获取数据
+        // 从基本信息数据表获取数据
         const userFilter = encodeURIComponent(`{username} = "${username}"`);
-        const [userResponse, websiteResponse] = await Promise.all([
-            callVika('GET', `/datasheets/${VIKA_CONFIG.datasheetId}/records?fieldKey=name&filterByFormula=${userFilter}`),
-            callVika('GET', `/datasheets/${VIKA_CONFIG.hotelDatasheetId}/records?fieldKey=name&filterByFormula=${userFilter}`)
-        ]);
+        const response = await callVika('GET', `/datasheets/${VIKA_CONFIG.basicInfoDatasheetId}/records?fieldKey=name&filterByFormula=${userFilter}`);
         
-        // 检查用户是否存在
-        if (!userResponse.success || !Array.isArray(userResponse.data?.records) || userResponse.data.records.length === 0) {
-            return res.status(404).json({ success: false, message: '用户不存在' });
+        if (!response.success || !Array.isArray(response.data?.records) || response.data.records.length === 0) {
+            // 如果基本信息表中没有记录，返回默认值
+            return res.status(200).json({ 
+                success: true, 
+                data: {
+                    username: username,
+                    websiteName: 'URO Hotel'
+                }
+            });
         }
         
-        const userRecord = userResponse.data.records[0];
-        let websiteName = 'URO Hotel'; // 默认值
-        
-        // 从网站信息表获取网站名称
-        if (websiteResponse.success && Array.isArray(websiteResponse.data?.records) && websiteResponse.data.records.length > 0) {
-            const websiteRecord = websiteResponse.data.records[0];
-            websiteName = websiteRecord.fields.websiteName || websiteRecord.fields.hotelName || websiteName;
-        }
-        
+        const record = response.data.records[0];
         const basicInfo = {
-            username: userRecord.fields.username || username,
-            websiteName: websiteName
+            username: record.fields.username || username,
+            websiteName: record.fields.websiteName || record.fields.hotelName || 'URO Hotel'
         };
         
         return res.status(200).json({ success: true, data: basicInfo });
@@ -745,10 +741,10 @@ app.put('/api/basic-info/:username', async (req, res) => {
             return res.status(404).json({ success: false, message: '用户不存在' });
         }
         
-        // 更新网站信息到网站信息数据表
+        // 更新基本信息到基本信息数据表
         if (websiteName !== undefined) {
-            // 查找网站信息记录
-            const websiteResponse = await callVika('GET', `/datasheets/${VIKA_CONFIG.hotelDatasheetId}/records?fieldKey=name&filterByFormula=${userFilter}`);
+            // 查找基本信息记录
+            const basicInfoResponse = await callVika('GET', `/datasheets/${VIKA_CONFIG.basicInfoDatasheetId}/records?fieldKey=name&filterByFormula=${userFilter}`);
             
             const fieldsToUpdate = {
                 username: username,
@@ -756,23 +752,23 @@ app.put('/api/basic-info/:username', async (req, res) => {
                 hotelName: websiteName // 同时更新hotelName字段以保持兼容性
             };
             
-            if (websiteResponse.success && Array.isArray(websiteResponse.data?.records) && websiteResponse.data.records.length > 0) {
+            if (basicInfoResponse.success && Array.isArray(basicInfoResponse.data?.records) && basicInfoResponse.data.records.length > 0) {
                 // 更新现有记录
-                const websiteRecord = websiteResponse.data.records[0];
+                const basicInfoRecord = basicInfoResponse.data.records[0];
                 const payload = {
-                    records: [{ recordId: websiteRecord.recordId, fields: fieldsToUpdate }],
+                    records: [{ recordId: basicInfoRecord.recordId, fields: fieldsToUpdate }],
                     fieldKey: 'name'
                 };
-                const updateResp = await callVika('PATCH', `/datasheets/${VIKA_CONFIG.hotelDatasheetId}/records`, payload);
-                if (!updateResp.success) throw new Error('更新网站信息失败');
+                const updateResp = await callVika('PATCH', `/datasheets/${VIKA_CONFIG.basicInfoDatasheetId}/records`, payload);
+                if (!updateResp.success) throw new Error('更新基本信息失败');
             } else {
                 // 创建新记录
                 const payload = {
                     records: [{ fields: fieldsToUpdate }],
                     fieldKey: 'name'
                 };
-                const createResp = await callVika('POST', `/datasheets/${VIKA_CONFIG.hotelDatasheetId}/records`, payload);
-                if (!createResp.success) throw new Error('创建网站信息失败');
+                const createResp = await callVika('POST', `/datasheets/${VIKA_CONFIG.basicInfoDatasheetId}/records`, payload);
+                if (!createResp.success) throw new Error('创建基本信息失败');
             }
         }
         

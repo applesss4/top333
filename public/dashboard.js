@@ -1200,7 +1200,7 @@ async function openBasicInfoModal() {
         }
         
         // 获取基本信息
-        const response = await fetch(`${API_CONFIG.baseURL}/basic-info/${currentUsername}`);
+        const response = await fetch(`${API_CONFIG.baseURL}/api/basic-info/${currentUsername}`);
         
         let username = currentUsername;
         let websiteName = '';
@@ -1269,7 +1269,7 @@ async function handleBasicInfoSubmit(e) {
         submitBtn.disabled = true;
         
         // 更新基本信息
-        const response = await fetch(`${API_CONFIG.baseURL}/basic-info/${currentUsername}`, {
+        const response = await fetch(`${API_CONFIG.baseURL}/api/basic-info/${currentUsername}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
