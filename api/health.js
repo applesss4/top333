@@ -1,7 +1,8 @@
 // Vercel 无服务器函数 - 健康检查端点
 // 统一检查运行时、环境变量、以及与维格表的连通性
 
-const safeFetch = (typeof fetch === 'function') ? fetch : require('node-fetch');
+// 在 Node.js 18+（Vercel Node.js 20 运行时）已内置 fetch，这里直接使用全局 fetch，避免对 node-fetch 的打包依赖导致函数构建失败
+const safeFetch = fetch;
 
 const VIKA_CONFIG = {
   apiToken: process.env.VIKA_API_TOKEN,
