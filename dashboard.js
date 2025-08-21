@@ -60,9 +60,6 @@ function initializePage() {
     // 加载个人信息
     loadProfileData();
     
-    // 初始化周日程
-    initializeWeeklySchedule();
-    
     // 设置默认日期为今天
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('workDate').value = today;
@@ -294,9 +291,8 @@ async function loadScheduleData() {
         renderScheduleTable();
         updateDashboardStats();
         
-        // 重新渲染周日程
-        const currentWeekStart = getCurrentWeekStart();
-        renderWeeklySchedule(currentWeekStart);
+        // 初始化周日程
+        initializeWeeklySchedule();
         
         hideLoading();
         
