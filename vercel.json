@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/api/users/validate",
+      "destination": "/api/users"
+    },
+    {
+      "source": "/api/users/check/(.*)",
+      "destination": "/api/users"
+    },
+    {
       "source": "/dashboard",
       "destination": "/public/dashboard.html"
     },
