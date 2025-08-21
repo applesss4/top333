@@ -293,6 +293,11 @@ async function loadScheduleData() {
         
         renderScheduleTable();
         updateDashboardStats();
+        
+        // 重新渲染周日程
+        const currentWeekStart = getCurrentWeekStart();
+        renderWeeklySchedule(currentWeekStart);
+        
         hideLoading();
         
     } catch (error) {
