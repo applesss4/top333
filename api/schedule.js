@@ -269,7 +269,7 @@ module.exports = async (req, res) => {
             
         } else if (method === 'DELETE') {
             // 删除工作日程
-            const scheduleId = urlParts[urlParts.length - 1];
+            const scheduleId = getQueryParam('scheduleId');
             
             if (!scheduleId) {
                 return res.status(400).json({
