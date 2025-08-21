@@ -35,9 +35,43 @@ const VIKA_CONFIG = {
 document.addEventListener('DOMContentLoaded', function() {
     initializePage();
     bindEventListeners();
+    initializeTimeSelectors();
     updateCurrentTime();
     setInterval(updateCurrentTime, 1000);
 });
+
+// 初始化时间选择器
+function initializeTimeSelectors() {
+    const startTimeSelect = document.getElementById('startTime');
+    const endTimeSelect = document.getElementById('endTime');
+    
+    if (!startTimeSelect || !endTimeSelect) return;
+    
+    // 生成时间选项（00:00 到 23:30，每30分钟一个选项）
+    const timeOptions = [];
+    for (let hour = 0; hour < 24; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+            const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+            timeOptions.push(timeStr);
+        }
+    }
+    
+    // 清空现有选项并添加新选项
+    startTimeSelect.innerHTML = '<option value="">请选择开始时间</option>';
+    endTimeSelect.innerHTML = '<option value="">请选择结束时间</option>';
+    
+    timeOptions.forEach(time => {
+        const startOption = document.createElement('option');
+        startOption.value = time;
+        startOption.textContent = time;
+        startTimeSelect.appendChild(startOption);
+        
+        const endOption = document.createElement('option');
+        endOption.value = time;
+        endOption.textContent = time;
+        endTimeSelect.appendChild(endOption);
+    });
+}
 
 // 初始化页面
 function initializePage() {
@@ -337,10 +371,19 @@ function renderScheduleTable() {
         const duration = calculateDuration(schedule.startTime, schedule.endTime);
         const storeName = getStoreName(schedule.workStore);
         
+        // 格式化日期显示（处理时间戳转换）
+        const formattedDate = typeof schedule.workDate === 'number' 
+            ? new Date(schedule.workDate).toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            }).replace(/\//g, '-')
+            : schedule.workDate;
+        
         return `
             <tr>
                 <td><span class="store-badge ${schedule.workStore}">${storeName}</span></td>
-                <td>${schedule.workDate}</td>
+                <td>${formattedDate}</td>
                 <td>${weekDay}</td>
                 <td>${schedule.startTime}</td>
                 <td>${schedule.endTime}</td>
@@ -458,7 +501,13 @@ function openScheduleModal(scheduleId = null) {
                 storeValue = storeValue[0] || '';
             }
             document.getElementById('workStore').value = storeValue;
-            document.getElementById('workDate').value = schedule.workDate;
+            
+            // 处理日期格式（时间戳转换为YYYY-MM-DD格式）
+            const workDateValue = typeof schedule.workDate === 'number' 
+                ? new Date(schedule.workDate).toISOString().split('T')[0]
+                : schedule.workDate;
+            document.getElementById('workDate').value = workDateValue;
+            
             document.getElementById('startTime').value = schedule.startTime;
             document.getElementById('endTime').value = schedule.endTime;
             document.getElementById('notes').value = schedule.notes || '';
@@ -1229,7 +1278,13 @@ function renderWeeklySchedule(weekStart) {
     // 渲染周日程网格
     weeklyGrid.innerHTML = weekDays.map(day => {
         const dateStr = day.toISOString().split('T')[0];
-        const daySchedules = weekSchedules.filter(s => s.workDate === dateStr);
+        const daySchedules = weekSchedules.filter(s => {
+            // 处理时间戳格式的日期
+            const scheduleDate = typeof s.workDate === 'number' 
+                ? new Date(s.workDate).toISOString().split('T')[0]
+                : s.workDate;
+            return scheduleDate === dateStr;
+        });
         const isToday = dateStr === new Date().toISOString().split('T')[0];
         
         return `
