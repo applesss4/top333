@@ -581,7 +581,7 @@ async function confirmDelete() {
     if (!window.pendingDeleteId) return;
     
     try {
-        const response = await fetch(`${API_CONFIG.baseURL}/schedule/${window.pendingDeleteId}`, {
+        const response = await fetch(`${API_CONFIG.baseURL}/schedule?scheduleId=${window.pendingDeleteId}`, {
             method: 'DELETE'
         });
         
