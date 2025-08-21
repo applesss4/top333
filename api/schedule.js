@@ -278,7 +278,7 @@ module.exports = async (req, res) => {
                 });
             }
             
-            await callVikaAPI('DELETE', `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records?records=${scheduleId}`);
+            await callVikaAPI('DELETE', `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records/${scheduleId}`);
             
             res.status(200).json({
                 success: true,
