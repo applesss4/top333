@@ -20,8 +20,16 @@
       "dest": "/public/dashboard.html"
     },
     {
-      "src": "/(.*)",
+      "src": "/dashboard.html",
+      "dest": "/public/dashboard.html"
+    },
+    {
+      "src": "/(.*\\.(html|css|js|png|jpg|jpeg|gif|svg|ico))",
       "dest": "/public/$1"
+    },
+    {
+      "src": "/",
+      "dest": "/public/index.html"
     }
   ]
 }
