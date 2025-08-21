@@ -873,8 +873,10 @@ function showShopMonthlyStats(contentDiv) {
     const shopStats = {};
     monthSchedules.forEach(schedule => {
         // 获取店铺信息 - 兼容多种字段名
-        let shopCode = schedule.shop || schedule.storeCode || schedule.store;
+        let shopCode = schedule.shop || schedule.storeCode || schedule.store || schedule.workStore;
         let shopName = '未知店铺';
+        
+        console.log(`处理日程: shopCode=${shopCode}, 原始workStore=${schedule.workStore}`);
         
         if (shopCode) {
             // 从shopData中查找店铺名称
