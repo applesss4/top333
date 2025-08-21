@@ -273,13 +273,8 @@ body {
 }
 
 .clock-display {
-    background: linear-gradient(135deg, rgba(139, 69, 19, 0.8) 0%, rgba(160, 82, 45, 0.8) 50%, rgba(210, 180, 140, 0.8) 100%);
     padding: 30px 50px;
-    border-radius: 20px;
-    box-shadow: 0 12px 35px rgba(139, 69, 19, 0.4);
     display: inline-block;
-    backdrop-filter: blur(10px);
-    border: 3px solid #F5F0E8;
     max-width: calc(100vw - 80px);
     min-width: 0;
     width: auto;
@@ -375,7 +370,6 @@ body {
         min-width: 0;
         width: 100%;
         box-sizing: border-box;
-        border-radius: 15px;
     }
     
     .time {
@@ -480,7 +474,6 @@ body {
         min-width: 0;
         width: 100%;
         box-sizing: border-box;
-        border-radius: 10px;
     }
     
     .time {
@@ -527,7 +520,6 @@ body {
         min-width: 0;
         width: 100%;
         box-sizing: border-box;
-        border-radius: 12px;
     }
     
     .time {
