@@ -5,6 +5,11 @@
   "engines": {
     "node": "20.x"
   },
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js",
+    "build": "echo 'No build step required for static files'"
+  },
   "dependencies": {
     "@vikadata/vika": "^1.4.5",
     "bcryptjs": "^2.4.3",
