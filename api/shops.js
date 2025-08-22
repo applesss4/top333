@@ -71,39 +71,46 @@ module.exports = async (req, res) => {
       case 'GET':
         // 获取店铺列表或单个店铺
         if (shopId) {
-          // 获取单个店铺
+          // 获取单个店铺 - 从日程表中查找包含该店铺的记录
           const result = await callVikaAPI('GET', 
-            `/datasheets/${VIKA_CONFIG.userDatasheetId}/records?filterByFormula=AND({code}='${shopId}')&fieldKey=name`);
+            `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records?filterByFormula=FIND('${shopId}',{工作店铺})&fieldKey=name`);
           
           if (result.data && result.data.records && result.data.records.length > 0) {
-            const shop = result.data.records[0];
             return res.status(200).json({
               ok: true,
               data: {
-                id: shop.recordId,
-                name: shop.fields.name,
-                code: shop.fields.code
+                id: shopId,
+                name: shopId,
+                code: shopId
               }
             });
           } else {
             return res.status(404).json({ ok: false, message: 'Shop not found' });
           }
         } else {
-          // 获取所有店铺
+          // 获取所有店铺 - 从日程表中提取所有唯一的店铺名称
           const result = await callVikaAPI('GET', 
-            `/datasheets/${VIKA_CONFIG.userDatasheetId}/records?fieldKey=name`);
+            `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records?fieldKey=name`);
           
-          const shops = result.data?.records?.map(record => ({
-            id: record.recordId,
-            name: record.fields.name,
-            code: record.fields.code
-          })) || [];
+          const shopSet = new Set();
+          result.data?.records?.forEach(record => {
+            const shops = record.fields['工作店铺'];
+            if (Array.isArray(shops)) {
+              shops.forEach(shop => shopSet.add(shop));
+            }
+          });
+          
+          const shops = Array.from(shopSet).map(shopName => ({
+            id: shopName,
+            name: shopName,
+            code: shopName
+          }));
           
           return res.status(200).json({ ok: true, data: shops });
         }
 
       case 'POST':
-        // 创建新店铺
+        // 创建新店铺 - 实际上是创建一个包含新店铺的日程记录
         const { name, code } = req.body;
         if (!name || !code) {
           return res.status(400).json({ 
@@ -112,23 +119,29 @@ module.exports = async (req, res) => {
           });
         }
 
+        // 创建一个示例日程记录来添加新店铺
         const createData = {
           records: [{
-            fields: { name, code }
+            fields: {
+              '工作店铺': [name],
+              '工作日期': new Date().getTime(),
+              '开始时间': '09:00',
+              '结束时间': '17:00',
+              '工作时长': 8
+            }
           }]
         };
 
         const createResult = await callVikaAPI('POST', 
-          `/datasheets/${VIKA_CONFIG.userDatasheetId}/records`, createData);
+          `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records`, createData);
         
         if (createResult.data && createResult.data.records && createResult.data.records.length > 0) {
-          const newShop = createResult.data.records[0];
           return res.status(201).json({
             ok: true,
             data: {
-              id: newShop.recordId,
-              name: newShop.fields.name,
-              code: newShop.fields.code
+              id: name,
+              name: name,
+              code: code
             }
           });
         } else {
@@ -136,66 +149,86 @@ module.exports = async (req, res) => {
         }
 
       case 'PUT':
-        // 更新店铺
+        // 更新店铺 - 更新所有包含该店铺的日程记录
         if (!shopId) {
           return res.status(400).json({ ok: false, message: 'Shop ID is required' });
         }
 
-        // 先查找记录ID
+        const { name: newName } = req.body;
+        if (!newName) {
+          return res.status(400).json({ ok: false, message: 'New name is required' });
+        }
+
+        // 查找所有包含该店铺的记录
         const findResult = await callVikaAPI('GET', 
-          `/datasheets/${VIKA_CONFIG.userDatasheetId}/records?filterByFormula=AND({code}='${shopId}')&fieldKey=name`);
+          `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records?filterByFormula=FIND('${shopId}',{工作店铺})&fieldKey=name`);
         
         if (!findResult.data || !findResult.data.records || findResult.data.records.length === 0) {
           return res.status(404).json({ ok: false, message: 'Shop not found' });
         }
 
-        const recordId = findResult.data.records[0].recordId;
-        const updateFields = {};
-        if (req.body.name) updateFields.name = req.body.name;
-        if (req.body.code) updateFields.code = req.body.code;
+        // 更新所有相关记录
+        const updatePromises = findResult.data.records.map(record => {
+          const updatedShops = record.fields['工作店铺'].map(shop => 
+            shop === shopId ? newName : shop
+          );
+          
+          const updateData = {
+            records: [{
+              recordId: record.recordId,
+              fields: { '工作店铺': updatedShops }
+            }]
+          };
+          
+          return callVikaAPI('PATCH', `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records`, updateData);
+        });
 
-        const updateData = {
-          records: [{
-            recordId,
-            fields: updateFields
-          }]
-        };
-
-        const updateResult = await callVikaAPI('PATCH', 
-          `/datasheets/${VIKA_CONFIG.userDatasheetId}/records`, updateData);
+        await Promise.all(updatePromises);
         
-        if (updateResult.data && updateResult.data.records && updateResult.data.records.length > 0) {
-          const updatedShop = updateResult.data.records[0];
-          return res.status(200).json({
-            ok: true,
-            data: {
-              id: updatedShop.recordId,
-              name: updatedShop.fields.name,
-              code: updatedShop.fields.code
-            }
-          });
-        } else {
-          return res.status(500).json({ ok: false, message: 'Failed to update shop' });
-        }
+        return res.status(200).json({
+          ok: true,
+          data: {
+            id: newName,
+            name: newName,
+            code: newName
+          }
+        });
 
       case 'DELETE':
-        // 删除店铺
+        // 删除店铺 - 从所有日程记录中移除该店铺
         if (!shopId) {
           return res.status(400).json({ ok: false, message: 'Shop ID is required' });
         }
 
-        // 先查找记录ID
+        // 查找所有包含该店铺的记录
         const deleteSearchResult = await callVikaAPI('GET', 
-          `/datasheets/${VIKA_CONFIG.userDatasheetId}/records?filterByFormula=AND({code}='${shopId}')&fieldKey=name`);
+          `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records?filterByFormula=FIND('${shopId}',{工作店铺})&fieldKey=name`);
         
         if (!deleteSearchResult.data || !deleteSearchResult.data.records || deleteSearchResult.data.records.length === 0) {
           return res.status(404).json({ ok: false, message: 'Shop not found' });
         }
 
-        const deleteRecordId = deleteSearchResult.data.records[0].recordId;
-        
-        await callVikaAPI('DELETE', 
-          `/datasheets/${VIKA_CONFIG.userDatasheetId}/records?recordIds=${deleteRecordId}`);
+        // 从所有相关记录中移除该店铺
+        const deletePromises = deleteSearchResult.data.records.map(record => {
+          const updatedShops = record.fields['工作店铺'].filter(shop => shop !== shopId);
+          
+          if (updatedShops.length === 0) {
+            // 如果没有其他店铺，删除整个记录
+            return callVikaAPI('DELETE', 
+              `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records?recordIds=${record.recordId}`);
+          } else {
+            // 否则更新记录，移除该店铺
+            const updateData = {
+              records: [{
+                recordId: record.recordId,
+                fields: { '工作店铺': updatedShops }
+              }]
+            };
+            return callVikaAPI('PATCH', `/datasheets/${VIKA_CONFIG.scheduleDatasheetId}/records`, updateData);
+          }
+        });
+
+        await Promise.all(deletePromises);
         
         return res.status(200).json({ ok: true, message: 'Shop deleted successfully' });
 
