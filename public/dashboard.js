@@ -717,7 +717,7 @@ async function handleScheduleSubmit(e) {
         const result = await response.json();
         console.log(`[调试信息] API响应成功:`, result);
         
-        if (result.success) {
+        if (result.ok || result.success) {
             // 关闭模态框
             closeScheduleModal();
             
@@ -1188,7 +1188,7 @@ async function loadProfileData() {
         
         if (response.ok) {
             const result = await response.json();
-            if (result.success && result.data) {
+            if ((result.ok || result.success) && result.data) {
                 const profileData = result.data;
                 const displayName = profileData.realName || currentUsername || '管理员';
                 document.getElementById('profileUsername').textContent = displayName;
@@ -1230,7 +1230,7 @@ async function openBasicInfoModal() {
         // 处理基本信息响应
         if (response.ok) {
             const result = await response.json();
-            if (result.success && result.data) {
+            if ((result.ok || result.success) && result.data) {
                 if (result.data.username) {
                     username = result.data.username;
                 }
@@ -1304,7 +1304,7 @@ async function handleBasicInfoSubmit(e) {
         
         const result = await response.json();
         
-        if (response.ok && result.success) {
+        if (response.ok && (result.ok || result.success)) {
             // 更新页面显示
             document.getElementById('profileUsername').textContent = username;
             document.getElementById('hotelName').textContent = websiteName;
@@ -1350,13 +1350,40 @@ async function loadShopData() {
         const response = await fetch(`${API_CONFIG.baseURL}/shops`);
         
         if (response.ok) {
-            const result = await response.json();
-            if (result.ok && Array.isArray(result.data)) {
-                shopData = result.data;
+            const resultRaw = await response.json();
+            let result = resultRaw;
+            // 兼容后端可能返回的字符串化JSON
+            if (typeof result === 'string') {
+                try { result = JSON.parse(result); } catch (e) {}
+            }
+            
+            // 统一提取数据数组（兼容多种格式）
+            let data = Array.isArray(result) ? result : result?.data;
+            if (typeof data === 'string') {
+                try { data = JSON.parse(data); } catch (e) {}
+            }
+            
+            if (Array.isArray(data) && ((Array.isArray(result)) || result?.ok === true || result?.success === true || result?.data)) {
+                // 规范化字段，确保每条记录有 id/name/code
+                shopData = data.map(item => ({
+                    id: item.id || item.code || item.name,
+                    name: item.name || item.code || item.id || '',
+                    code: item.code || item.id || item.name || ''
+                }));
                 // 保存到本地存储作为缓存
                 localStorage.setItem('shopData', JSON.stringify(shopData));
             } else {
-                throw new Error('API返回数据格式错误');
+                console.warn('[调试信息] API数据格式不符合预期，使用本地缓存: ', resultRaw);
+                const savedShops = localStorage.getItem('shopData');
+                if (savedShops) {
+                    shopData = JSON.parse(savedShops);
+                } else {
+                    shopData = [
+                        { id: '300円店', name: '300円店', code: '300円店' },
+                        { id: '拉面店', name: '拉面店', code: '拉面店' }
+                    ];
+                    localStorage.setItem('shopData', JSON.stringify(shopData));
+                }
             }
         } else {
             throw new Error(`API请求失败: ${response.status}`);
@@ -1532,7 +1559,7 @@ async function handleShopSubmit(e) {
         
         const result = await response.json();
         
-        if (result.success) {
+        if (result.ok || result.success) {
             // 重新加载店铺数据
             await loadShopData();
             
@@ -1575,7 +1602,7 @@ async function confirmShopDelete() {
         
         const result = await response.json();
         
-        if (result.success) {
+        if (result.ok || result.success) {
             // 重新加载店铺数据
             await loadShopData();
             

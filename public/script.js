@@ -550,7 +550,7 @@ async function handleRegister(e) {
         // 创建新用户
         const result = await createUser(username, email, password);
         
-        if (result.success) {
+        if (result && (result.ok || result.success)) {
             // 清空表单
             document.getElementById('regUsername').value = '';
             document.getElementById('regEmail').value = '';
@@ -562,18 +562,18 @@ async function handleRegister(e) {
                 showLoginForm();
             }, 1500); // 1.5秒后切换到登录界面，让用户看到成功消息
         } else {
-            showMessage(result.message || '注册失败，请稍后重试', 'error');
+            showMessage(result?.message || '注册失败，请稍后重试', 'error');
         }
     } catch (error) {
         console.error('注册错误:', error);
         // 如果是后端返回的错误，显示具体错误消息
         if (error.isBackendError) {
-            showMessage(error.message, 'error');
+            showMessage(error.message || '注册失败，请稍后重试', 'error');
         } else {
-            showMessage('注册失败，请稍后重试', 'error');
+            showMessage('网络错误，请检查连接后重试', 'error');
         }
     } finally {
-        // 恢复按钮状态
+        // 恢复按钮
         submitBtn.textContent = originalText;
         submitBtn.disabled = false;
     }
