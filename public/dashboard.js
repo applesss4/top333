@@ -1221,7 +1221,7 @@ async function openBasicInfoModal() {
         }
         
         // 获取基本信息
-        const response = await fetch(`${API_CONFIG.baseURL}/api/hotel/${currentUsername}`);
+        const response = await fetch(`${API_CONFIG.baseURL}/hotel/${currentUsername}`);
         
         let username = currentUsername;
         let websiteName = '';
@@ -1290,7 +1290,7 @@ async function handleBasicInfoSubmit(e) {
         submitBtn.disabled = true;
         
         // 更新基本信息
-        const response = await fetch(`${API_CONFIG.baseURL}/api/hotel/${currentUsername}`, {
+        const response = await fetch(`${API_CONFIG.baseURL}/hotel/${currentUsername}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
@@ -1346,7 +1346,7 @@ async function handleBasicInfoSubmit(e) {
 async function loadShopData() {
     try {
         // 首先尝试从后端API获取店铺数据
-        const response = await fetch(`${API_CONFIG.baseURL}/api/shops`);
+        const response = await fetch(`${API_CONFIG.baseURL}/shops`);
         
         if (response.ok) {
             const result = await response.json();
@@ -1506,7 +1506,7 @@ async function handleShopSubmit(e) {
         
         if (editingShopId) {
             // 编辑现有店铺
-            response = await fetch(`${API_CONFIG.baseURL}/api/shops/${editingShopId}`, {
+            response = await fetch(`${API_CONFIG.baseURL}/shops/${editingShopId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1518,7 +1518,7 @@ async function handleShopSubmit(e) {
             });
         } else {
             // 添加新店铺
-            response = await fetch(`${API_CONFIG.baseURL}/api/shops`, {
+            response = await fetch(`${API_CONFIG.baseURL}/shops`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1569,7 +1569,7 @@ async function confirmShopDelete() {
     if (!editingShopId) return;
     
     try {
-        const response = await fetch(`${API_CONFIG.baseURL}/api/shops/${editingShopId}`, {
+        const response = await fetch(`${API_CONFIG.baseURL}/shops/${editingShopId}`, {
             method: 'DELETE'
         });
         
