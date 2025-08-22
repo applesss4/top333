@@ -17,6 +17,10 @@
       "destination": "/api/hotel"
     },
     {
+      "source": "/api/shops/(.*)",
+      "destination": "/api/shops"
+    },
+    {
       "source": "/dashboard",
       "destination": "/public/dashboard.html"
     },
