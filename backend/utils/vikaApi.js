@@ -168,20 +168,27 @@ async function checkUserExists(username, email = null) {
             }
             
             const encodedFilter = encodeURIComponent(filterFormula);
+            console.log('查询条件:', filterFormula);
+            console.log('编码后的查询条件:', encodedFilter);
+            
             const response = await callVika('GET', 
                 `/datasheets/${VIKA_CONFIG.datasheetId}/records?fieldKey=name&filterByFormula=${encodedFilter}&maxRecords=1`,
                 null, 3, true
             );
+            
+            console.log('API响应:', JSON.stringify(response, null, 2));
             
             if (!response.success) {
                 console.error('检查用户存在性失败:', response.error);
                 return null;
             }
             
-            const userExists = response.data?.records && response.data.records.length > 0;
+            const records = response.data?.data?.records || response.data?.records;
+            const userExists = records && records.length > 0;
             console.log('用户存在性检查结果:', userExists);
+            console.log('找到的记录:', records);
             
-            return userExists ? response.data.records[0] : null;
+            return userExists ? records[0] : null;
         });
         
     } catch (error) {

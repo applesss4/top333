@@ -128,14 +128,28 @@ app.post('/api/login', authLimiter, validateInput(schemas.login), async (req, re
         const { username, password } = req.body;
         
         // 获取用户信息
+        console.log('登录尝试:', { username });
         const filter = encodeURIComponent(`{username} = "${username}"`);
+        console.log('登录查询条件:', filter);
         const response = await callVika('GET', `/datasheets/${VIKA_CONFIG.datasheetId}/records?fieldKey=name&filterByFormula=${filter}`);
         
-        if (!response.success || !Array.isArray(response.data?.records) || response.data.records.length === 0) {
+        console.log('登录API响应:', JSON.stringify(response, null, 2));
+        
+        if (!response.success) {
+            console.log('登录失败: API响应不成功');
             return res.apiError('用户名或密码错误', 401);
         }
         
-        const userRecord = response.data.records[0];
+        // 处理嵌套的数据结构
+        const records = response.data?.data?.records || response.data?.records;
+        console.log('登录找到的记录:', records);
+        if (!Array.isArray(records) || records.length === 0) {
+            console.log('登录失败: 未找到用户记录');
+            return res.apiError('用户名或密码错误', 401);
+        }
+        
+        const userRecord = records[0];
+        console.log('登录用户记录:', userRecord);
         const userFields = userRecord.fields;
         
         // 检查账户是否被锁定
