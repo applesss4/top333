@@ -158,7 +158,11 @@ app.post('/api/login', authLimiter, validateInput(schemas.login), async (req, re
         }
         
         // 验证密码
+        console.log('开始密码验证...');
+        console.log('输入的密码:', password);
+        console.log('数据库中的哈希密码:', userFields.password);
         const isPasswordValid = await bcrypt.compare(password, userFields.password);
+        console.log('密码验证结果:', isPasswordValid);
         
         if (isPasswordValid) {
             // 登录成功，重置登录尝试次数

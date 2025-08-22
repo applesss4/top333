@@ -591,7 +591,7 @@ async function validateUser(username, password) {
         try {
             const startTime = Date.now();
             const response = await PerformanceUtils.retryRequest(async () => {
-                return await fetch(`${API_CONFIG.baseURL}/users/validate`, {
+                return await fetch(`${API_CONFIG.baseURL}/login`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
