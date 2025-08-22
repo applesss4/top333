@@ -10,6 +10,8 @@ let editingShopId = null;
 // API配置 - 根据环境动态设置
 const API_CONFIG = {
     isDevelopment: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
+    timeout: 10000, // 10秒超时
+    retries: 3, // 重试次数
     get baseURL() {
         const override = (typeof window !== 'undefined' && (window.__API_BASE_URL__ || localStorage.getItem('API_BASE_URL')));
         if (override) return override;
@@ -22,6 +24,158 @@ const API_CONFIG = {
         return '/api';
     }
 };
+
+// API客户端类 - 统一处理HTTP请求
+class ApiClient {
+    constructor(config) {
+        this.config = config;
+    }
+
+    async request(url, options = {}) {
+        const { method = 'GET', body, headers = {}, retries = this.config.retries } = options;
+        
+        const requestOptions = {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                ...headers
+            },
+            signal: AbortSignal.timeout(this.config.timeout)
+        };
+
+        if (body && method !== 'GET') {
+            requestOptions.body = typeof body === 'string' ? body : JSON.stringify(body);
+        }
+
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            try {
+                const response = await fetch(`${this.config.baseURL}${url}`, requestOptions);
+                
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ message: response.statusText }));
+                    throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                if (attempt === retries || error.name === 'AbortError') {
+                    throw error;
+                }
+                // 指数退避重试
+                await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+            }
+        }
+    }
+
+    get(url, options = {}) {
+        return this.request(url, { ...options, method: 'GET' });
+    }
+
+    post(url, data, options = {}) {
+        return this.request(url, { ...options, method: 'POST', body: data });
+    }
+
+    put(url, data, options = {}) {
+        return this.request(url, { ...options, method: 'PUT', body: data });
+    }
+
+    delete(url, options = {}) {
+        return this.request(url, { ...options, method: 'DELETE' });
+    }
+}
+
+// 创建API客户端实例
+const apiClient = new ApiClient(API_CONFIG);
+
+// UI工具类 - 统一处理UI操作
+class UIUtils {
+    static loadingCount = 0;
+    static messageQueue = new Set();
+
+    static showLoading() {
+        this.loadingCount++;
+        if (this.loadingCount === 1) {
+            const tbody = document.getElementById('scheduleTableBody');
+            if (tbody) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="loading">
+                            正在加载数据...
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+    }
+
+    static hideLoading() {
+        this.loadingCount = Math.max(0, this.loadingCount - 1);
+        if (this.loadingCount === 0) {
+            const tbody = document.getElementById('scheduleTableBody');
+            if (tbody) {
+                const loadingRow = tbody.querySelector('tr td.loading');
+                if (loadingRow) {
+                    loadingRow.parentElement.remove();
+                }
+            }
+        }
+    }
+
+    static showMessage(message, type = 'success') {
+        // 防止重复消息
+        const messageKey = `${message}-${type}`;
+        if (this.messageQueue.has(messageKey)) {
+            return;
+        }
+        this.messageQueue.add(messageKey);
+
+        // 移除现有消息
+        const existingMessage = document.querySelector('.message');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
+        
+        // 创建新消息
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${type}`;
+        messageDiv.textContent = this.escapeHtml(message);
+        
+        // 插入到内容区域顶部
+        const contentWrapper = document.querySelector('.content-wrapper');
+        if (contentWrapper) {
+            contentWrapper.insertBefore(messageDiv, contentWrapper.firstChild);
+        }
+        
+        // 3秒后自动移除
+        setTimeout(() => {
+            messageDiv.remove();
+            this.messageQueue.delete(messageKey);
+        }, 3000);
+    }
+
+    static escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    static confirm(message) {
+        return new Promise((resolve) => {
+            const result = window.confirm(message);
+            resolve(result);
+        });
+    }
+
+    static async showConfirmDialog(message, onConfirm, onCancel) {
+        const confirmed = await this.confirm(message);
+        if (confirmed && onConfirm) {
+            await onConfirm();
+        } else if (!confirmed && onCancel) {
+            await onCancel();
+        }
+        return confirmed;
+    }
+}
 
 const VIKA_CONFIG = {
     // 保留业务表名配置（如需要）
@@ -324,13 +478,8 @@ function handleQuickAction(e) {
 async function loadScheduleData() {
     try {
         showLoading();
-        const response = await fetch(`${API_CONFIG.baseURL}/schedule`);
+        const data = await apiClient.get('/schedule');
         
-        if (!response.ok) {
-            throw new Error('获取数据失败');
-        }
-        
-        const data = await response.json();
         scheduleData = data.records || [];
         // 更新window对象上的引用
         window.scheduleData = scheduleData;
@@ -345,7 +494,7 @@ async function loadScheduleData() {
         
     } catch (error) {
         console.error('加载工作日程数据失败:', error);
-        showMessage('加载数据失败，请检查网络连接', 'error');
+        showMessage(`加载数据失败: ${error.message}`, 'error');
         hideLoading();
     }
 }
@@ -396,19 +545,23 @@ function renderScheduleTable() {
             formattedDate = schedule.workDate;
         }
         
+        // 安全转义用户输入数据
+        const safeNotes = UIUtils.escapeHtml(schedule.notes || '-');
+        const safeScheduleId = UIUtils.escapeHtml(schedule.id);
+        
         return `
             <tr>
-                <td><span class="store-badge ${schedule.workStore}">${storeName}</span></td>
-                <td>${formattedDate}</td>
-                <td>${weekDay}</td>
-                <td>${schedule.startTime}</td>
-                <td>${schedule.endTime}</td>
+                <td><span class="store-badge ${schedule.workStore}">${UIUtils.escapeHtml(storeName)}</span></td>
+                <td>${UIUtils.escapeHtml(formattedDate)}</td>
+                <td>${UIUtils.escapeHtml(weekDay)}</td>
+                <td>${UIUtils.escapeHtml(schedule.startTime)}</td>
+                <td>${UIUtils.escapeHtml(schedule.endTime)}</td>
                 <td><span class="duration-badge ${getDurationClass(duration)}">${duration}小时</span></td>
-                <td>${schedule.notes || '-'}</td>
+                <td>${safeNotes}</td>
                 <td>
                     <div class="action-buttons">
-                        <button class="action-btn edit-btn" onclick="editSchedule('${schedule.id}')">编辑</button>
-                        <button class="action-btn delete-btn" onclick="deleteSchedule('${schedule.id}')">删除</button>
+                        <button class="action-btn edit-btn" onclick="editSchedule('${safeScheduleId}')">编辑</button>
+                        <button class="action-btn delete-btn" onclick="deleteSchedule('${safeScheduleId}')">删除</button>
                     </div>
                 </td>
             </tr>
@@ -605,10 +758,6 @@ async function handleScheduleSubmit(e) {
     try {
         showLoading();
         
-        let response;
-        let url;
-        let method;
-        
         // 将日期转换为UTC时间戳格式（维格表要求）
         const workDateUTC = new Date(scheduleData.workDate + 'T00:00:00.000Z').getTime();
         scheduleData.workDate = workDateUTC;
@@ -617,30 +766,14 @@ async function handleScheduleSubmit(e) {
         const duration = calculateDuration(scheduleData.startTime, scheduleData.endTime);
         scheduleData.duration = duration;
         
+        let result;
         if (editingScheduleId) {
             // 更新现有记录
-            url = `${API_CONFIG.baseURL}/schedule/${editingScheduleId}`;
-            method = 'PUT';
+            result = await apiClient.put(`/schedule/${editingScheduleId}`, scheduleData);
         } else {
             // 创建新记录
-            url = `${API_CONFIG.baseURL}/schedule`;
-            method = 'POST';
+            result = await apiClient.post('/schedule', scheduleData);
         }
-        
-        response = await fetch(url, {
-            method: method,
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(scheduleData)
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || '保存失败');
-        }
-        
-        const result = await response.json();
         
         if (result.success) {
             // 关闭模态框
@@ -693,13 +826,7 @@ async function confirmDelete() {
     if (!window.pendingDeleteId) return;
     
     try {
-        const response = await fetch(`${API_CONFIG.baseURL}/schedule?scheduleId=${window.pendingDeleteId}`, {
-            method: 'DELETE'
-        });
-        
-        if (!response.ok) {
-            throw new Error('删除失败');
-        }
+        await apiClient.delete(`/schedule?scheduleId=${window.pendingDeleteId}`);
         
         showMessage('日程删除成功', 'success');
         closeConfirmModal();
@@ -711,7 +838,7 @@ async function confirmDelete() {
         
     } catch (error) {
         console.error('删除日程失败:', error);
-        showMessage('删除失败，请重试', 'error');
+        showMessage(`删除失败：${error.message}`, 'error');
     }
 }
 
@@ -980,49 +1107,19 @@ function getMonthEnd(date) {
     return end;
 }
 
-// 显示加载状态
+// 显示加载状态 - 使用UIUtils类
 function showLoading() {
-    const tbody = document.getElementById('scheduleTableBody');
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="8" class="loading">
-                正在加载数据...
-            </td>
-        </tr>
-    `;
+    UIUtils.showLoading();
 }
 
-// 隐藏加载状态
+// 隐藏加载状态 - 使用UIUtils类
 function hideLoading() {
-    // 检查是否存在加载状态的行，如果存在则移除
-    const tbody = document.getElementById('scheduleTableBody');
-    const loadingRow = tbody.querySelector('tr td.loading');
-    if (loadingRow) {
-        loadingRow.parentElement.remove();
-    }
+    UIUtils.hideLoading();
 }
 
-// 显示消息
+// 显示消息 - 使用UIUtils类
 function showMessage(message, type = 'success') {
-    // 移除现有消息
-    const existingMessage = document.querySelector('.message');
-    if (existingMessage) {
-        existingMessage.remove();
-    }
-    
-    // 创建新消息
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${type}`;
-    messageDiv.textContent = message;
-    
-    // 插入到内容区域顶部
-    const contentWrapper = document.querySelector('.content-wrapper');
-    contentWrapper.insertBefore(messageDiv, contentWrapper.firstChild);
-    
-    // 3秒后自动移除
-    setTimeout(() => {
-        messageDiv.remove();
-    }, 3000);
+    UIUtils.showMessage(message, type);
 }
 
 // 导出函数供HTML调用
@@ -1150,17 +1247,17 @@ async function openProfileModal() {
         }
         
         // 从API获取最新的个人信息
-        const response = await fetch(`${API_CONFIG.baseURL}/profile/${currentUsername}`);
-        
         let displayName = currentUsername;
         let welcomeMessage = '欢迎使用系统';
         
-        if (response.ok) {
-            const result = await response.json();
+        try {
+            const result = await apiClient.get(`/profile/${currentUsername}`);
             if (result.success) {
                 displayName = result.data.displayName || currentUsername;
                 welcomeMessage = result.data.welcomeMessage || '欢迎使用系统';
             }
+        } catch (error) {
+            console.warn('获取个人信息失败，使用默认值:', error);
         }
         
         document.getElementById('editUsername').value = displayName;
@@ -1202,20 +1299,12 @@ async function handleProfileSubmit(e) {
         submitBtn.disabled = true;
         
         // 调用API更新个人信息
-        const response = await fetch(`${API_CONFIG.baseURL}/profile/${currentUsername}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                displayName: displayName,
-                welcomeMessage: welcomeMessage
-            })
+        const result = await apiClient.put(`/profile/${currentUsername}`, {
+            displayName: displayName,
+            welcomeMessage: welcomeMessage
         });
         
-        const result = await response.json();
-        
-        if (response.ok && result.success) {
+        if (result.success) {
             // 更新页面显示
             document.getElementById('profileUsername').textContent = displayName;
             document.getElementById('profileWelcome').textContent = welcomeMessage;
@@ -1283,30 +1372,37 @@ function renderShopList() {
         return;
     }
     
-    shopList.innerHTML = shopData.map(shop => `
-        <div class="shop-item">
-            <div class="shop-info">
-                <div class="shop-name">${shop.name}</div>
-                <div class="shop-code">代码: ${shop.code}</div>
+    shopList.innerHTML = shopData.map(shop => {
+        // 安全转义用户输入数据
+        const safeName = UIUtils.escapeHtml(shop.name);
+        const safeCode = UIUtils.escapeHtml(shop.code);
+        const safeShopId = UIUtils.escapeHtml(shop.id);
+        
+        return `
+            <div class="shop-item">
+                <div class="shop-info">
+                    <div class="shop-name">${safeName}</div>
+                    <div class="shop-code">代码: ${safeCode}</div>
+                </div>
+                <div class="shop-actions">
+                    <button class="btn btn-secondary" onclick="editShop('${safeShopId}')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
+                        编辑
+                    </button>
+                    <button class="btn btn-danger" onclick="deleteShop('${safeShopId}')">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3,6 5,6 21,6"></polyline>
+                            <path d="M19,6v14a2,2 0 0,1-2,2H7a2,2 0,1-2-2V6m3,0V4a2,2 0,1,2-2h4a2,2 0,1,2,2v2"></path>
+                        </svg>
+                        删除
+                    </button>
+                </div>
             </div>
-            <div class="shop-actions">
-                <button class="btn btn-secondary" onclick="editShop('${shop.id}')">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
-                    编辑
-                </button>
-                <button class="btn btn-danger" onclick="deleteShop('${shop.id}')">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="3,6 5,6 21,6"></polyline>
-                        <path d="M19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2"></path>
-                    </svg>
-                    删除
-                </button>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // 更新店铺选择器
@@ -1692,17 +1788,17 @@ async function openHotelInfoModal() {
         }
         
         // 从API获取最新的酒店信息
-        const response = await fetch(`${API_CONFIG.baseURL}/hotel/${currentUsername}`);
-        
         let hotelName = 'URO Hotel';
         let hotelDescription = 'Hotel & Cafe & Bar';
         
-        if (response.ok) {
-            const result = await response.json();
+        try {
+            const result = await apiClient.get(`/hotel/${currentUsername}`);
             if (result.success) {
                 hotelName = result.data.name || 'URO Hotel';
                 hotelDescription = result.data.description || 'Hotel & Cafe & Bar';
             }
+        } catch (error) {
+            console.warn('获取酒店信息失败，使用默认值:', error);
         }
         
         document.getElementById('editHotelName').value = hotelName;
@@ -1758,20 +1854,12 @@ async function handleHotelInfoSubmit(e) {
         submitBtn.disabled = true;
         
         // 调用API更新酒店信息
-        const response = await fetch(`${API_CONFIG.baseURL}/hotel/${currentUsername}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                name: hotelName,
-                description: hotelDescription
-            })
+        const result = await apiClient.put(`/hotel/${currentUsername}`, {
+            name: hotelName,
+            description: hotelDescription
         });
         
-        const result = await response.json();
-        
-        if (response.ok && result.success) {
+        if (result.success) {
             // 更新页面显示
             const hotelInfo = { name: hotelName, description: hotelDescription };
             updateHotelDisplay(hotelInfo);

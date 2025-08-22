@@ -55,25 +55,46 @@ const API_CONFIG = {
 // 前端不再存放维格表密钥信息，所有维格表访问均通过后端API进行
 const isVikaConfigured = true; // 前端默认认为后端可用，若后端返回错误再回退到本地存储
 
-// 测试维格表连接
-async function testVikaConnection() {
+// 测试维格表连接 - 使用缓存和重试机制
+const testVikaConnection = PerformanceUtils.debounce(async function() {
+    const cacheKey = 'vika_connection_test';
+    
+    // 检查缓存
+    const cached = PerformanceUtils.apiCache.get(cacheKey);
+    if (cached !== null) {
+        console.log('🎯 使用缓存的连接状态');
+        PerformanceUtils.performanceMonitor.recordCacheHit();
+        return cached;
+    }
+    
     try {
-        const response = await fetch(`${API_CONFIG.baseURL}/health`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' }
-        });
+        const startTime = Date.now();
+        const response = await PerformanceUtils.retryRequest(async () => {
+            return await fetch(`${API_CONFIG.baseURL}/health`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }, 2, 1000);
+        
+        const responseTime = Date.now() - startTime;
+        PerformanceUtils.performanceMonitor.recordApiCall(responseTime);
+        
         if (response.ok) {
             const data = await response.json();
             console.log('✅ 维格表连接成功！', data.message || data);
+            PerformanceUtils.apiCache.set(cacheKey, true);
             return true;
         }
         console.warn('❌ 维格表连接失败，状态码:', response.status);
+        PerformanceUtils.apiCache.set(cacheKey, false);
         return false;
     } catch (error) {
         console.warn('❌ 维格表连接测试出错:', error?.message || error);
+        PerformanceUtils.performanceMonitor.recordError();
+        PerformanceUtils.apiCache.set(cacheKey, false);
         return false;
     }
-}
+}, 1000);
 
 // DOM元素变量声明
 let loginForm, registerForm;
@@ -214,7 +235,60 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     
     // 注册表单提交事件已在bindEventListeners()中处理
+    
+    // 添加性能监控显示（开发环境）
+    if (API_CONFIG.isDevelopment) {
+        addPerformanceMonitor();
+    }
 });
+
+// 添加性能监控显示
+function addPerformanceMonitor() {
+    const monitorDiv = document.createElement('div');
+    monitorDiv.id = 'performance-monitor';
+    monitorDiv.style.cssText = `
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        font-family: monospace;
+        font-size: 12px;
+        z-index: 10000;
+        min-width: 200px;
+        cursor: pointer;
+    `;
+    
+    function updateMonitor() {
+        const stats = PerformanceUtils.performanceMonitor.getStats();
+        monitorDiv.innerHTML = `
+            <div><strong>性能监控</strong></div>
+            <div>API调用: ${stats.apiCalls}</div>
+            <div>缓存命中: ${stats.cacheHits}</div>
+            <div>命中率: ${stats.cacheHitRate}</div>
+            <div>错误数: ${stats.errors}</div>
+            <div>平均响应: ${stats.averageResponseTime.toFixed(0)}ms</div>
+            <div>缓存大小: ${PerformanceUtils.apiCache.size()}</div>
+            <div style="margin-top: 5px; font-size: 10px; color: #ccc;">点击清除缓存</div>
+        `;
+    }
+    
+    // 点击清除缓存
+    monitorDiv.addEventListener('click', () => {
+        PerformanceUtils.apiCache.clear();
+        PerformanceUtils.performanceMonitor.reset();
+        updateMonitor();
+        console.log('🧹 缓存和统计已清除');
+    });
+    
+    document.body.appendChild(monitorDiv);
+    
+    // 每5秒更新一次
+    updateMonitor();
+    setInterval(updateMonitor, 5000);
+}
 
 // 简易星空动画
 function initStarfield() {
@@ -507,61 +581,55 @@ async function handleRegister(e) {
 
 // 验证用户登录（通过后端API）
 async function validateUser(username, password) {
-    try {
-        // 优先尝试维格表API验证
-        if (isVikaConfigured) {
-            // 添加重试机制处理API频率限制
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                try {
-                    const response = await fetch(`${API_CONFIG.baseURL}/users/validate`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            username: username,
-                            password: password  // 发送原始密码，让后端处理加密
-                        })
-                    });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.success) {
-                            return {
-                                id: data.user.id,
-                                username: data.user.username,
-                                email: data.user.email
-                            };
-                        } else {
-                            // 验证失败，不需要重试
-                            break;
-                        }
-                    } else if (response.status === 500) {
-                        const errorData = await response.json();
-                        if (errorData.error && errorData.error.includes('QPS')) {
-                            console.warn(`维格表API频率限制，第${attempt}次重试...`);
-                            if (attempt < 3) {
-                                await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // 递增延迟
-                                continue;
-                            }
-                        }
-                    }
-                    break;
-                } catch (fetchError) {
-                    console.warn(`维格表API请求失败 (尝试 ${attempt}/3):`, fetchError.message);
-                    if (attempt < 3) {
-                        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-                    }
-                }
-            }
-        }
-    } catch (error) {
-        console.error('维格表验证失败:', error);
+    if (!isVikaConfigured) {
+        return await validateUserLocal(username, password);
     }
     
-    // 使用本地存储作为备用
-    console.log('使用本地存储验证用户');
-    return await validateUserLocal(username, password);
+    const requestKey = `validate_${username}`;
+    
+    return await PerformanceUtils.requestDeduplicator.request(requestKey, async () => {
+        try {
+            const startTime = Date.now();
+            const response = await PerformanceUtils.retryRequest(async () => {
+                return await fetch(`${API_CONFIG.baseURL}/users/validate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password  // 发送原始密码，让后端处理加密
+                    })
+                });
+            }, 2, 1500);
+            
+            const responseTime = Date.now() - startTime;
+            PerformanceUtils.performanceMonitor.recordApiCall(responseTime);
+            
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    return {
+                        id: data.user.id,
+                        username: data.user.username,
+                        email: data.user.email
+                    };
+                } else {
+                    return null;
+                }
+            } else if (response.status >= 500) {
+                console.warn('后端服务暂时不可用，使用本地验证');
+                return await validateUserLocal(username, password);
+            }
+            return null;
+        } catch (error) {
+            console.error('维格表验证失败:', error);
+            PerformanceUtils.performanceMonitor.recordError();
+            // 使用本地存储作为备用
+            console.log('使用本地存储验证用户');
+            return await validateUserLocal(username, password);
+        }
+    });
 }
 
 // 本地存储模拟用户验证（用于演示）
@@ -580,72 +648,77 @@ async function validateUserLocal(username, password) {
 }
 
 // 检查用户是否存在
-async function checkUserExists(username) {
-    try {
-        // 优先尝试维格表API检查用户
-        if (isVikaConfigured) {
-            // 添加重试机制处理API频率限制
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                try {
-                    const response = await fetch(`${API_CONFIG.baseURL}/users/check/${username}`, {
+const checkUserExists = PerformanceUtils.debounce(async function(username) {
+    const cacheKey = `user_exists_${username}`;
+    
+    // 检查缓存
+    const cached = PerformanceUtils.apiCache.get(cacheKey);
+    if (cached !== null) {
+        console.log('🎯 使用缓存的用户存在状态');
+        PerformanceUtils.performanceMonitor.recordCacheHit();
+        return cached;
+    }
+    
+    const requestKey = `check_user_${username}`;
+    
+    return await PerformanceUtils.requestDeduplicator.request(requestKey, async () => {
+        try {
+            if (isVikaConfigured) {
+                const startTime = Date.now();
+                const response = await PerformanceUtils.retryRequest(async () => {
+                    return await fetch(`${API_CONFIG.baseURL}/users/check/${username}`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json'
                         }
                     });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        return data.exists;
-                    } else if (response.status === 500) {
-                        const errorData = await response.json();
-                        if (errorData.error && errorData.error.includes('QPS')) {
-                            console.warn(`维格表API频率限制，第${attempt}次重试...`);
-                            if (attempt < 3) {
-                                await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // 递增延迟
-                                continue;
-                            }
-                        }
-                    }
-                    break;
-                } catch (fetchError) {
-                    console.warn(`维格表API请求失败 (尝试 ${attempt}/3):`, fetchError.message);
-                    if (attempt < 3) {
-                        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-                    }
+                }, 2, 1000);
+                
+                const responseTime = Date.now() - startTime;
+                PerformanceUtils.performanceMonitor.recordApiCall(responseTime);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const exists = data.exists;
+                    PerformanceUtils.apiCache.set(cacheKey, exists);
+                    return exists;
+                } else if (response.status >= 500) {
+                    console.warn('后端服务暂时不可用，使用本地检查');
                 }
             }
+        } catch (error) {
+            console.error('维格表检查用户失败:', error);
+            PerformanceUtils.performanceMonitor.recordError();
         }
-    } catch (error) {
-        console.error('维格表检查用户失败:', error);
-    }
-    
-    // 使用本地存储作为备用
-    console.log('使用本地存储检查用户');
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    return users.some(user => user.username === username);
-}
+        
+        // 使用本地存储作为备用
+        console.log('使用本地存储检查用户');
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        const exists = users.some(user => user.username === username);
+        PerformanceUtils.apiCache.set(cacheKey, exists);
+        return exists;
+    });
+}, 300);
 
 // 创建用户（通过后端API）
 async function createUser(username, email, password) {
-    try {
-        // 检查用户是否已存在
-        const userExists = await checkUserExists(username);
-        if (userExists) {
-            return {
-                success: false,
-                message: '用户名已存在，请选择其他用户名'
-            };
-        }
-        
-        // 优先尝试维格表API创建用户
-        if (isVikaConfigured) {
-            // 发送原始密码，让后端处理加密
+    const requestKey = `create_user_${username}`;
+    
+    return await PerformanceUtils.requestDeduplicator.request(requestKey, async () => {
+        try {
+            // 检查用户是否已存在
+            const userExists = await checkUserExists(username);
+            if (userExists) {
+                return {
+                    success: false,
+                    message: '用户名已存在，请选择其他用户名'
+                };
+            }
             
-            // 添加重试机制处理API频率限制
-            for (let attempt = 1; attempt <= 3; attempt++) {
-                try {
-                    const response = await fetch(`${API_CONFIG.baseURL}/users`, {
+            if (isVikaConfigured) {
+                const startTime = Date.now();
+                const response = await PerformanceUtils.retryRequest(async () => {
+                    return await fetch(`${API_CONFIG.baseURL}/users`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -653,44 +726,67 @@ async function createUser(username, email, password) {
                         body: JSON.stringify({
                             username: username,
                             email: email,
-                            password: password  // 发送原始密码，避免双重加密
+                            password: password  // 发送原始密码，让后端处理加密
                         })
                     });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
+                }, 2, 1500);
+                
+                const responseTime = Date.now() - startTime;
+                PerformanceUtils.performanceMonitor.recordApiCall(responseTime);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        // 清除相关缓存
+                        PerformanceUtils.apiCache.delete(`user_exists_${username}`);
                         console.log('维格表创建用户成功:', data);
                         return {
                             success: true,
-                            username: username,
-                            email: email
-                        };
-                    } else if (response.status === 500) {
-                        const errorData = await response.json();
-                        if (errorData.error && errorData.error.includes('QPS')) {
-                            console.warn(`维格表API频率限制，第${attempt}次重试...`);
-                            if (attempt < 3) {
-                                await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // 递增延迟
-                                continue;
+                            user: {
+                                id: data.user.id,
+                                username: data.user.username,
+                                email: data.user.email
                             }
-                        }
-                        throw new Error(errorData.message || '维格表创建用户失败');
+                        };
                     } else {
-                        const errorData = await response.json();
-                        throw new Error(errorData.message || '维格表创建用户失败');
+                        return {
+                            success: false,
+                            message: data.message || '创建用户失败'
+                        };
                     }
-                } catch (fetchError) {
-                    console.warn(`维格表API请求失败 (尝试 ${attempt}/3):`, fetchError.message);
-                    if (attempt < 3) {
-                        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-                        continue;
+                } else {
+                    const errorData = await response.json().catch(() => ({ message: '创建用户失败' }));
+                    if (response.status >= 500) {
+                        console.warn('后端服务暂时不可用，使用本地存储');
+                        const hashedPassword = await hashPassword(password);
+                        const result = createUserLocal(username, email, hashedPassword);
+                        return {
+                            success: true,
+                            username: result.username,
+                            email: result.email
+                        };
                     }
-                    throw fetchError;
+                    return {
+                        success: false,
+                        message: errorData.message || '创建用户失败'
+                    };
                 }
+            } else {
+                // 使用本地存储
+                console.log('使用本地存储创建用户');
+                const hashedPassword = await hashPassword(password);
+                const result = createUserLocal(username, email, hashedPassword);
+                return {
+                    success: true,
+                    username: result.username,
+                    email: result.email
+                };
             }
-        } else {
-            // 使用本地存储
-            console.log('使用本地存储创建用户');
+        } catch (error) {
+            console.error('创建用户失败:', error);
+            PerformanceUtils.performanceMonitor.recordError();
+            // 使用本地存储作为备用
+            console.log('维格表API不可用，使用本地存储创建用户');
             const hashedPassword = await hashPassword(password);
             const result = createUserLocal(username, email, hashedPassword);
             return {
@@ -699,13 +795,7 @@ async function createUser(username, email, password) {
                 email: result.email
             };
         }
-    } catch (error) {
-        console.error('创建用户失败:', error);
-        return {
-            success: false,
-            message: error.message || '创建用户失败，请稍后重试'
-        };
-    }
+    });
 }
 
 // 本地存储模拟创建用户（用于演示）
