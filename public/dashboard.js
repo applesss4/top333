@@ -1351,7 +1351,7 @@ async function loadShopData() {
         
         if (response.ok) {
             const result = await response.json();
-            if (result.success && Array.isArray(result.data)) {
+            if (result.ok && Array.isArray(result.data)) {
                 shopData = result.data;
                 // 保存到本地存储作为缓存
                 localStorage.setItem('shopData', JSON.stringify(shopData));
