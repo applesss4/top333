@@ -1369,11 +1369,10 @@ async function loadShopData() {
         if (savedShops) {
             shopData = JSON.parse(savedShops);
         } else {
-            // 最后的后备方案：使用默认店铺数据
+            // 最后的后备方案：使用默认店铺数据（与API数据保持一致）
             shopData = [
-                { id: 'main', name: '主店', code: 'main' },
-                { id: 'branch1', name: '分店1', code: 'branch1' },
-                { id: 'branch2', name: '分店2', code: 'branch2' }
+                { id: '300円店', name: '300円店', code: '300円店' },
+                { id: '拉面店', name: '拉面店', code: '拉面店' }
             ];
             localStorage.setItem('shopData', JSON.stringify(shopData));
         }
