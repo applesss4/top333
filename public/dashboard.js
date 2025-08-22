@@ -21,7 +21,8 @@ const API_CONFIG = {
         if (this.isDevelopment) {
             return 'http://localhost:3001/api';
         }
-        return '/api';
+        // 生产环境使用Vercel部署的API
+        return 'https://top333.vercel.app/api';
     }
 };
 
