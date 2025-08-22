@@ -9,7 +9,7 @@ const VIKA_CONFIG = {
     profileDatasheetId: process.env.VIKA_PROFILE_DATASHEET_ID || process.env.VIKA_DATASHEET_ID,
     hotelDatasheetId: process.env.VIKA_HOTEL_DATASHEET_ID || process.env.VIKA_DATASHEET_ID,
     basicInfoDatasheetId: process.env.VIKA_BASIC_INFO_DATASHEET_ID || process.env.VIKA_DATASHEET_ID,
-    shopDatasheetId: process.env.VIKA_SHOP_DATASHEET_ID || 'dstAcH7jWQV7d7m9V1',
+    shopDatasheetId: process.env.VIKA_SHOP_DATASHEET_ID || process.env.VIKA_DATASHEET_ID,
     baseUrl: process.env.VIKA_BASE_URL || 'https://vika.cn/fusion/v1'
 };
 
