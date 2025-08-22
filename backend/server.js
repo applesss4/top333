@@ -1,11 +1,11 @@
 const express = require('express');
 const cors = require('cors');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 
 // 导入自定义模块
-const { callVika, detectScheduleFieldKeys, checkUserExists, VIKA_CONFIG } = require('./utils/vikaApi');
+const { callVika, detectScheduleFieldKeys, checkUserExists, getShopData, VIKA_CONFIG } = require('./utils/vikaApi');
 const { schemas, validateInput, sanitizeInput } = require('./middleware/validation');
 const { responseFormatter } = require('./middleware/response');
 const { generalLimiter, authLimiter, registerLimiter, helmetConfig } = require('./middleware/security');
@@ -794,6 +794,25 @@ app.put('/api/basic-info/:username', async (req, res) => {
     } catch (e) {
         console.error('更新基本信息失败:', e);
         return res.apiError(e.message || '服务器错误', e.status || 500, e.details);
+    }
+});
+
+// 店铺数据API
+app.get('/api/shops', async (req, res) => {
+    try {
+        const shops = await getShopData();
+        res.json({
+            success: true,
+            data: shops,
+            message: '获取店铺数据成功'
+        });
+    } catch (error) {
+        console.error('获取店铺数据失败:', error);
+        res.status(500).json({
+            success: false,
+            message: '获取店铺数据失败',
+            error: error.message
+        });
     }
 });
 

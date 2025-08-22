@@ -31,11 +31,11 @@ const VIKA_CONFIG = {
 };
 
 // 页面初始化
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
     // 检测平台并初始化
     detectPlatformAndInitialize();
     
-    initializePage();
+    await initializePage();
     bindEventListeners();
     initializeTimeSelectors();
     updateCurrentTime();
@@ -99,7 +99,7 @@ function initializeTimeSelectors() {
 }
 
 // 初始化页面
-function initializePage() {
+async function initializePage() {
     // 检查登录状态
     const userData = localStorage.getItem('userData');
     if (!userData) {
@@ -114,7 +114,7 @@ function initializePage() {
     loadScheduleData();
     
     // 加载店铺数据
-    loadShopData();
+    await loadShopData();
     
     // 加载个人信息
     loadProfileData();
@@ -1343,18 +1343,39 @@ async function handleBasicInfoSubmit(e) {
 }
 
 // 加载店铺数据
-function loadShopData() {
-    const savedShops = localStorage.getItem('shopData');
-    if (savedShops) {
-        shopData = JSON.parse(savedShops);
-    } else {
-        // 默认店铺数据
-        shopData = [
-            { id: 'main', name: '主店', code: 'main' },
-            { id: 'branch1', name: '分店1', code: 'branch1' },
-            { id: 'branch2', name: '分店2', code: 'branch2' }
-        ];
-        localStorage.setItem('shopData', JSON.stringify(shopData));
+async function loadShopData() {
+    try {
+        // 首先尝试从后端API获取店铺数据
+        const response = await fetch(`${API_CONFIG.baseURL}/api/shops`);
+        
+        if (response.ok) {
+            const result = await response.json();
+            if (result.success && Array.isArray(result.data)) {
+                shopData = result.data;
+                // 保存到本地存储作为缓存
+                localStorage.setItem('shopData', JSON.stringify(shopData));
+            } else {
+                throw new Error('API返回数据格式错误');
+            }
+        } else {
+            throw new Error(`API请求失败: ${response.status}`);
+        }
+    } catch (error) {
+        console.warn('从API获取店铺数据失败，尝试使用本地缓存:', error);
+        
+        // 尝试从本地存储获取缓存数据
+        const savedShops = localStorage.getItem('shopData');
+        if (savedShops) {
+            shopData = JSON.parse(savedShops);
+        } else {
+            // 最后的后备方案：使用默认店铺数据
+            shopData = [
+                { id: 'main', name: '主店', code: 'main' },
+                { id: 'branch1', name: '分店1', code: 'branch1' },
+                { id: 'branch2', name: '分店2', code: 'branch2' }
+            ];
+            localStorage.setItem('shopData', JSON.stringify(shopData));
+        }
     }
     
     // 更新window对象上的引用

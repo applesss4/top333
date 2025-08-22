@@ -9,6 +9,7 @@ const VIKA_CONFIG = {
     profileDatasheetId: process.env.VIKA_PROFILE_DATASHEET_ID || process.env.VIKA_DATASHEET_ID,
     hotelDatasheetId: process.env.VIKA_HOTEL_DATASHEET_ID || process.env.VIKA_DATASHEET_ID,
     basicInfoDatasheetId: process.env.VIKA_BASIC_INFO_DATASHEET_ID || process.env.VIKA_DATASHEET_ID,
+    shopDatasheetId: process.env.VIKA_SHOP_DATASHEET_ID || 'dstAcH7jWQV7d7m9V1',
     baseUrl: process.env.VIKA_BASE_URL || 'https://vika.cn/fusion/v1'
 };
 
@@ -191,9 +192,46 @@ async function checkUserExists(username, email = null) {
     }
 }
 
+/**
+ * 获取店铺数据
+ * @returns {Promise<Array>} 店铺数据数组
+ */
+async function getShopData() {
+    try {
+        const endpoint = `/datasheets/${VIKA_CONFIG.shopDatasheetId}/records`;
+        const result = await callVika('GET', endpoint, null, 3, true);
+        
+        if (!result.success || !result.data?.data?.records) {
+            console.warn('获取店铺数据失败或数据为空');
+            return [];
+        }
+        
+        // 转换维格表数据格式为前端需要的格式
+        const shops = result.data.data.records.map(record => {
+            const fields = record.fields;
+            return {
+                id: fields.id || record.recordId,
+                name: fields.name || fields['店铺名称'] || '',
+                code: fields.code || fields['店铺代码'] || ''
+            };
+        }).filter(shop => shop.name && shop.code); // 过滤掉无效数据
+        
+        return shops;
+    } catch (error) {
+        console.error('获取店铺数据失败:', error);
+        // 返回默认店铺数据作为后备
+        return [
+            { id: '1', name: '主店', code: 'main' },
+            { id: '2', name: '分店1', code: 'branch1' },
+            { id: '3', name: '分店2', code: 'branch2' }
+        ];
+    }
+}
+
 module.exports = {
     VIKA_CONFIG,
     callVika,
     detectScheduleFieldKeys,
-    checkUserExists
+    checkUserExists,
+    getShopData
 };
