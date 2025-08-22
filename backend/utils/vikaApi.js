@@ -1,7 +1,10 @@
 const axios = require('axios');
 const { userCacheOps, scheduleCacheOps, generateCacheKey, cacheWrapper, cache } = require('./cache');
 
-// Vika配置
+// 确保环境变量已加载
+require('dotenv').config();
+
+// 维格表API配置
 const VIKA_CONFIG = {
     apiToken: process.env.VIKA_API_TOKEN,
     datasheetId: process.env.VIKA_DATASHEET_ID,

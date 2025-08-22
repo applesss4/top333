@@ -73,6 +73,20 @@ const schemas = {
             .messages({
                 'string.max': '酒店描述不能超过1000个字符'
             })
+    }),
+    shop: Joi.object({
+        name: Joi.string().min(1).max(100).required()
+            .messages({
+                'string.min': '店铺名称不能为空',
+                'string.max': '店铺名称不能超过100个字符',
+                'any.required': '店铺名称是必填项'
+            }),
+        code: Joi.string().min(1).max(50).required()
+            .messages({
+                'string.min': '店铺代码不能为空',
+                'string.max': '店铺代码不能超过50个字符',
+                'any.required': '店铺代码是必填项'
+            })
     })
 };
 

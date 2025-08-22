@@ -797,7 +797,8 @@ app.put('/api/basic-info/:username', async (req, res) => {
     }
 });
 
-// 店铺数据API
+// ============ 店铺数据管理 API ============
+// 获取店铺数据
 app.get('/api/shops', async (req, res) => {
     try {
         const shops = await getShopData();
@@ -813,6 +814,107 @@ app.get('/api/shops', async (req, res) => {
             message: '获取店铺数据失败',
             error: error.message
         });
+    }
+});
+
+// 创建店铺
+app.post('/api/shops', validateInput(schemas.shop), async (req, res) => {
+    try {
+        const { name, code } = req.body;
+        
+        if (!name || !code) {
+            return res.apiError('店铺名称和代码都是必填项', 400);
+        }
+        
+        // 检查代码是否重复
+        const existingShops = await getShopData();
+        const duplicateShop = existingShops.find(shop => shop.code === code);
+        if (duplicateShop) {
+            return res.apiError('店铺代码已存在，请使用其他代码', 400);
+        }
+        
+        // 创建新店铺记录
+        const fieldsToCreate = {
+            name: name,
+            code: code,
+            '店铺名称': name,
+            '店铺代码': code,
+            'created_at': new Date().toISOString()
+        };
+        
+        const payload = {
+            records: [{ fields: fieldsToCreate }],
+            fieldKey: 'name'
+        };
+        
+        const createResp = await callVika('POST', `/datasheets/${VIKA_CONFIG.shopDatasheetId}/records`, payload);
+        if (!createResp.success) throw new Error('创建店铺失败');
+        
+        return res.apiSuccess({
+            id: createResp.data.data.records[0].recordId,
+            name: name,
+            code: code
+        }, '店铺创建成功');
+    } catch (e) {
+        console.error('创建店铺失败:', e);
+        return res.apiError(e.message || '服务器错误', e.status || 500, e.details);
+    }
+});
+
+// 更新店铺
+app.put('/api/shops/:id', validateInput(schemas.shop), async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, code } = req.body;
+        
+        if (!id) return res.apiError('店铺ID缺失', 400);
+        if (!name || !code) {
+            return res.apiError('店铺名称和代码都是必填项', 400);
+        }
+        
+        // 检查代码是否重复（排除当前店铺）
+        const existingShops = await getShopData();
+        const duplicateShop = existingShops.find(shop => shop.code === code && shop.id !== id);
+        if (duplicateShop) {
+            return res.apiError('店铺代码已存在，请使用其他代码', 400);
+        }
+        
+        const fieldsToUpdate = {
+            name: name,
+            code: code,
+            '店铺名称': name,
+            '店铺代码': code,
+            'updated_at': new Date().toISOString()
+        };
+        
+        const payload = {
+            records: [{ recordId: id, fields: fieldsToUpdate }],
+            fieldKey: 'name'
+        };
+        
+        const updateResp = await callVika('PATCH', `/datasheets/${VIKA_CONFIG.shopDatasheetId}/records`, payload);
+        if (!updateResp.success) throw new Error('更新店铺失败');
+        
+        return res.apiSuccess(null, '店铺更新成功');
+    } catch (e) {
+        console.error('更新店铺失败:', e);
+        return res.apiError(e.message || '服务器错误', e.status || 500, e.details);
+    }
+});
+
+// 删除店铺
+app.delete('/api/shops/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        if (!id) return res.apiError('店铺ID缺失', 400);
+        
+        const deleteResp = await callVika('DELETE', `/datasheets/${VIKA_CONFIG.shopDatasheetId}/records?recordIds=${encodeURIComponent(JSON.stringify([id]))}`);
+        if (!deleteResp.success) throw new Error('删除店铺失败');
+        
+        return res.apiSuccess(null, '店铺删除成功');
+    } catch (e) {
+        console.error('删除店铺失败:', e);
+        return res.apiError(e.message || '服务器错误', e.status || 500, e.details);
     }
 });
 

@@ -1501,46 +1501,49 @@ async function handleShopSubmit(e) {
         return;
     }
     
-    // 检查代码是否重复（编辑时排除自己）
-    const existingShop = shopData.find(shop => shop.code === shopCode && shop.id !== editingShopId);
-    if (existingShop) {
-        showMessage('店铺代码已存在，请使用其他代码', 'error');
-        return;
-    }
-    
     try {
+        let response;
+        
         if (editingShopId) {
-            // 编辑店铺
-            const shopIndex = shopData.findIndex(shop => shop.id === editingShopId);
-            if (shopIndex !== -1) {
-                shopData[shopIndex] = {
-                    ...shopData[shopIndex],
+            // 编辑现有店铺
+            response = await fetch(`${API_CONFIG.baseURL}/api/shops/${editingShopId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
                     name: shopName,
                     code: shopCode
-                };
-            }
+                })
+            });
         } else {
             // 添加新店铺
-            const newShop = {
-                id: Date.now().toString(),
-                name: shopName,
-                code: shopCode
-            };
-            shopData.push(newShop);
+            response = await fetch(`${API_CONFIG.baseURL}/api/shops`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    name: shopName,
+                    code: shopCode
+                })
+            });
         }
         
-        // 保存到本地存储
-        localStorage.setItem('shopData', JSON.stringify(shopData));
+        const result = await response.json();
         
-        // 更新显示
-        renderShopList();
-        updateShopSelectors();
-        
-        closeShopModal();
-        showMessage(editingShopId ? '店铺更新成功！' : '店铺添加成功！', 'success');
+        if (result.success) {
+            // 重新加载店铺数据
+            await loadShopData();
+            
+            closeShopModal();
+            showMessage(result.message || (editingShopId ? '店铺更新成功！' : '店铺添加成功！'), 'success');
+        } else {
+            showMessage(result.message || '操作失败，请重试', 'error');
+        }
     } catch (error) {
-        console.error('保存店铺失败:', error);
-        showMessage('保存店铺失败，请重试', 'error');
+        console.error('店铺操作失败:', error);
+        showMessage('网络错误，请检查连接后重试', 'error');
     }
 }
 
@@ -1566,21 +1569,24 @@ async function confirmShopDelete() {
     if (!editingShopId) return;
     
     try {
-        // 从数组中移除店铺
-        shopData = shopData.filter(shop => shop.id !== editingShopId);
+        const response = await fetch(`${API_CONFIG.baseURL}/api/shops/${editingShopId}`, {
+            method: 'DELETE'
+        });
         
-        // 保存到本地存储
-        localStorage.setItem('shopData', JSON.stringify(shopData));
+        const result = await response.json();
         
-        // 更新显示
-        renderShopList();
-        updateShopSelectors();
-        
-        closeShopConfirmModal();
-        showMessage('店铺删除成功！', 'success');
+        if (result.success) {
+            // 重新加载店铺数据
+            await loadShopData();
+            
+            closeShopConfirmModal();
+            showMessage(result.message || '店铺删除成功！', 'success');
+        } else {
+            showMessage(result.message || '删除失败，请重试', 'error');
+        }
     } catch (error) {
         console.error('删除店铺失败:', error);
-        showMessage('删除店铺失败，请重试', 'error');
+        showMessage('网络错误，请检查连接后重试', 'error');
     }
 }
 
