@@ -1518,6 +1518,11 @@ function closeShopModal() {
 async function handleShopSubmit(e) {
     e.preventDefault();
     
+    const submitBtn = document.getElementById('shopSaveBtn');
+    if (submitBtn.disabled) return; // 防止重复提交
+    
+    submitBtn.disabled = true;
+
     const formData = new FormData(e.target);
     const shopName = formData.get('shopName').trim();
     const shopCode = formData.get('shopCode').trim();
@@ -1525,6 +1530,7 @@ async function handleShopSubmit(e) {
     // 验证输入
     if (!shopName || !shopCode) {
         showMessage('请填写完整的店铺信息', 'error');
+        submitBtn.disabled = false;
         return;
     }
     
@@ -1557,6 +1563,15 @@ async function handleShopSubmit(e) {
             });
         }
         
+        // 处理429频率限制错误
+        if (response.status === 429) {
+            showMessage('操作过于频繁，请30秒后重试', 'warning');
+            setTimeout(() => {
+                if (submitBtn) submitBtn.disabled = false;
+            }, 30000);
+            return;
+        }
+        
         const result = await response.json();
         
         if (result.ok || result.success) {
@@ -1568,9 +1583,18 @@ async function handleShopSubmit(e) {
         } else {
             showMessage(result.message || '操作失败，请重试', 'error');
         }
+        
+        // 正常情况下立即重新启用按钮
+        submitBtn.disabled = false;
+        
     } catch (error) {
         console.error('店铺操作失败:', error);
-        showMessage('网络错误，请检查连接后重试', 'error');
+        showMessage(error.message.includes('Failed to fetch') 
+            ? '网络错误，请检查连接后重试' 
+            : '操作失败：' + error.message, 'error');
+        
+        // 错误情况下也要重新启用按钮
+        submitBtn.disabled = false;
     }
 }
 
@@ -1593,8 +1617,10 @@ function closeShopConfirmModal() {
 
 // 确认删除店铺
 async function confirmShopDelete() {
-    if (!editingShopId) return;
+    const deleteBtn = document.getElementById('deleteShopBtn');
+    if (!editingShopId || deleteBtn.disabled) return;
     
+    deleteBtn.disabled = true;
     try {
         const response = await fetch(`${API_CONFIG.baseURL}/shops/${editingShopId}`, {
             method: 'DELETE'
@@ -1602,18 +1628,27 @@ async function confirmShopDelete() {
         
         const result = await response.json();
         
+        if (response.status === 429) {
+            showMessage('操作过于频繁，请30秒后重试', 'warning');
+            return;
+        }
+        
         if (result.ok || result.success) {
-            // 重新加载店铺数据
             await loadShopData();
-            
             closeShopConfirmModal();
             showMessage(result.message || '店铺删除成功！', 'success');
         } else {
-            showMessage(result.message || '删除失败，请重试', 'error');
+            showMessage(result.message || '删除失败: ' + (result.error || ''), 'error');
         }
     } catch (error) {
         console.error('删除店铺失败:', error);
-        showMessage('网络错误，请检查连接后重试', 'error');
+        showMessage(error.message.includes('Failed to fetch') 
+            ? '网络连接失败，请检查网络后重试' 
+            : '操作失败，请稍后再试', 'error');
+    } finally {
+        setTimeout(() => {
+            if (deleteBtn) deleteBtn.disabled = false;
+        }, 30000); // 30秒后解锁
     }
 }
 
