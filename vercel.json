@@ -2,19 +2,19 @@
   "rewrites": [
     {
       "source": "/api/register",
-      "destination": "/api/users"
+      "destination": "/api/users-supabase"
     },
     {
       "source": "/api/login",
-      "destination": "/api/users"
+      "destination": "/api/users-supabase"
     },
     {
       "source": "/api/users/validate",
-      "destination": "/api/users"
+      "destination": "/api/users-supabase"
     },
     {
       "source": "/api/users/check/(.*)",
-      "destination": "/api/users"
+      "destination": "/api/users-supabase"
     },
     {
       "source": "/api/profile/(.*)",
