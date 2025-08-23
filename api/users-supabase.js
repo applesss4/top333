@@ -75,7 +75,7 @@ module.exports = async (req, res) => {
     }
 
     // 用户注册
-    if (pathname === '/api/users' && method === 'POST') {
+    if ((pathname === '/api/users' || pathname === '/api/register') && method === 'POST') {
       try {
         const body = await parseRequestBody(req);
         const { username, password, email, phone } = body;
@@ -142,7 +142,7 @@ module.exports = async (req, res) => {
     }
 
     // 用户登录
-    if (pathname === '/api/users/login' && method === 'POST') {
+    if ((pathname === '/api/users/login' || pathname === '/api/login') && method === 'POST') {
       try {
         const body = await parseRequestBody(req);
         const { username, password } = body;
@@ -205,6 +205,50 @@ module.exports = async (req, res) => {
         return sendJsonResponse(res, 500, {
           success: false,
           message: '登录失败',
+          error: error.message
+        });
+      }
+    }
+
+    // 验证用户token
+    if (pathname === '/api/users/validate' && method === 'POST') {
+      try {
+        const body = await parseRequestBody(req);
+        const { token } = body;
+
+        if (!token) {
+          return sendJsonResponse(res, 400, {
+            success: false,
+            message: 'Token不能为空'
+          });
+        }
+
+        // 验证 JWT token
+        const decoded = jwt.verify(token, JWT_SECRET);
+        
+        // 获取用户信息
+        const user = await SupabaseUserService.getUserByUsername(decoded.username);
+        if (!user) {
+          return sendJsonResponse(res, 401, {
+            success: false,
+            message: '用户不存在'
+          });
+        }
+
+        // 不返回密码
+        const { password, ...userProfile } = user;
+        
+        return sendJsonResponse(res, 200, {
+          success: true,
+          message: 'Token验证成功',
+          user: userProfile
+        });
+
+      } catch (error) {
+        console.error('Token验证错误:', error);
+        return sendJsonResponse(res, 401, {
+          success: false,
+          message: 'Token无效或已过期',
           error: error.message
         });
       }
