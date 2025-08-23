@@ -615,6 +615,10 @@ async function validateUser(username, password) {
                         email: data.user.email,
                         token: data.token
                     };
+                } else {
+                    // 响应成功但业务逻辑失败
+                    console.log('登录失败:', data.message || '用户名或密码错误');
+                    return null;
                 }
             }
             
