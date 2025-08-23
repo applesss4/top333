@@ -164,8 +164,14 @@ module.exports = async (req, res) => {
       throw new Error(createResponse.message || '创建用户失败');
     }
 
-    // 验证用户 (支持两个路径: /api/users/validate 和 /api/login)
-    if (method === 'POST' && (pathname === '/api/users/validate' || pathname === '/api/login')) {
+    // 验证用户 (支持两个路径: /api/users/validate 和 /api/login)，以及 /api/users 上的登录形态（username+password 且无 email）
+    if (
+      method === 'POST' && (
+        pathname === '/api/users/validate' ||
+        pathname === '/api/login' ||
+        (pathname === '/api/users' && body && body.username && body.password && !body.email)
+      )
+    ) {
       const { username, password } = body;
       if (!username || !password) {
         return res.status(400).json({ success: false, message: '用户名和密码都是必填项' });

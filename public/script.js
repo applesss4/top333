@@ -598,7 +598,8 @@ async function validateUser(username, password) {
                     return {
                         id: data.user.id,
                         username: data.user.username,
-                        email: data.user.email
+                        email: data.user.email,
+                        token: data.token
                     };
                 } else {
                     return null;
