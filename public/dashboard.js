@@ -356,10 +356,10 @@ async function loadScheduleData() {
         console.log(`[调试信息] 环境检测: 移动端=${API_CONFIG.isMobile}, 开发环境=${API_CONFIG.isDevelopment}`);
         console.log(`[调试信息] API基础URL: ${API_CONFIG.baseURL}`);
         
-        // 使用ApiConfig获取API路径
+        // 使用ApiConfig获取API路径 - 始终使用Supabase API
         const apiUrl = window.ApiConfig ? 
             `${API_CONFIG.baseURL}${window.ApiConfig.getApiPath('schedule')}` : 
-            `${API_CONFIG.baseURL}/schedule`;
+            `${API_CONFIG.baseURL}/schedule-supabase`;
         console.log(`[调试信息] 请求URL: ${apiUrl}`);
         
         const response = await AuthUtils.fetchWithAuth(apiUrl);
@@ -667,11 +667,11 @@ async function handleScheduleSubmit(e) {
         
         if (editingScheduleId) {
             // 更新现有记录
-            url = `${API_CONFIG.baseURL}/schedule/${editingScheduleId}`;
+            url = `${API_CONFIG.baseURL}/schedule-supabase/${editingScheduleId}`;
             method = 'PUT';
         } else {
             // 创建新记录
-            url = `${API_CONFIG.baseURL}/schedule`;
+            url = `${API_CONFIG.baseURL}/schedule-supabase`;
             method = 'POST';
         }
         
@@ -756,7 +756,7 @@ async function confirmDelete() {
     if (!window.pendingDeleteId) return;
     
     try {
-        const response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/schedule?scheduleId=${window.pendingDeleteId}`, {
+        const response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/schedule-supabase?scheduleId=${window.pendingDeleteId}`, {
             method: 'DELETE'
         });
         
@@ -1174,8 +1174,10 @@ async function loadProfileData() {
             return;
         }
         
-        // 使用ApiConfig获取API路径
-        const apiUrl = `${API_CONFIG.baseURL}/profile/${currentUsername}`;
+        // 使用ApiConfig获取API路径 - 使用users-supabase API获取用户信息
+        const apiUrl = window.ApiConfig ? 
+            `${API_CONFIG.baseURL}${window.ApiConfig.getApiPath('users')}/${currentUsername}` : 
+            `${API_CONFIG.baseURL}/users-supabase/${currentUsername}`;
         const response = await AuthUtils.fetchWithAuth(apiUrl);
         
         if (response.ok) {
@@ -1218,8 +1220,11 @@ async function openBasicInfoModal() {
             return;
         }
         
-        // 获取基本信息
-        const response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/hotel/${currentUsername}`);
+        // 获取基本信息 - 使用users-supabase API
+        const apiUrl = window.ApiConfig ? 
+            `${API_CONFIG.baseURL}${window.ApiConfig.getApiPath('users-supabase')}/${currentUsername}` : 
+            `${API_CONFIG.baseURL}/users-supabase/${currentUsername}`;
+        const response = await AuthUtils.fetchWithAuth(apiUrl);
         
         let username = currentUsername;
         let websiteName = '';
@@ -1288,7 +1293,7 @@ async function handleBasicInfoSubmit(e) {
         submitBtn.disabled = true;
         
         // 更新基本信息
-        const response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/hotel/${currentUsername}`, {
+        const response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/users-supabase/${currentUsername}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
@@ -1348,8 +1353,8 @@ async function loadShopData() {
         // 首先尝试从后端API获取店铺数据
         // 使用ApiConfig获取API路径
         const apiUrl = window.ApiConfig ? 
-            `${API_CONFIG.baseURL}${window.ApiConfig.getApiPath('shops')}` : 
-            `${API_CONFIG.baseURL}/shops`;
+            `${API_CONFIG.baseURL}${window.ApiConfig.getApiPath('shops-supabase')}` : 
+            `${API_CONFIG.baseURL}/shops-supabase`;
         const response = await AuthUtils.fetchWithAuth(apiUrl);
         
         if (response.ok) {
@@ -1542,7 +1547,7 @@ async function handleShopSubmit(e) {
         
         if (editingShopId) {
             // 编辑现有店铺
-            response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/shops/${editingShopId}`, {
+            response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/shops-supabase/${editingShopId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1554,7 +1559,7 @@ async function handleShopSubmit(e) {
             });
         } else {
             // 添加新店铺
-            response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/shops`, {
+            response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/shops-supabase`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1625,7 +1630,7 @@ async function confirmShopDelete() {
     
     deleteBtn.disabled = true;
     try {
-        const response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/shops/${editingShopId}`, {
+        const response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/shops-supabase/${editingShopId}`, {
             method: 'DELETE'
         });
         
