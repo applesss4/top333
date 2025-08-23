@@ -28,7 +28,7 @@ const authLimiter = rateLimit({
 // 注册频率限制
 const registerLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1小时
-    max: 3, // 限制每个IP 1小时内最多3次注册尝试
+    max: 10, // 限制每个IP 1小时内最多10次注册尝试（临时增加用于测试）
     message: {
         success: false,
         message: '注册尝试过于频繁，请1小时后再试'

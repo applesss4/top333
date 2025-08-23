@@ -29,6 +29,11 @@ class AuthUtils {
         return userData ? JSON.parse(userData) : null;
     }
 
+    // 设置当前用户信息
+    static setCurrentUser(userData) {
+        localStorage.setItem('userData', JSON.stringify(userData));
+    }
+
     // 创建带有认证头的请求选项
     static createAuthHeaders(additionalHeaders = {}) {
         const token = this.getToken();

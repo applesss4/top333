@@ -30,9 +30,15 @@ function updateClock() {
 // API配置 - 根据环境动态设置
 const API_CONFIG = {
     get baseURL() {
-        // 生产环境使用相对路径，指向无服务器函数
+        // 生产环境和开发环境都使用相对路径，指向无服务器函数
         return '/api';
     }
+};
+
+// Supabase 配置
+const SUPABASE_CONFIG = {
+    url: 'https://paumgahictuhluhuudws.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhdW1nYWhpY3R1aGx1aHV1ZHdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU5MTE0NzYsImV4cCI6MjA3MTQ4NzQ3Nn0.caf1r6TUgDyUFSYf3l-AuYyOAUffTzXfI5HV2rcJR_U'
 };
 
 // 前端不再存放维格表密钥信息，所有维格表访问均通过后端API进行
@@ -604,10 +610,10 @@ async function validateUser(username, password) {
                 const data = await response.json();
                 if (data.success) {
                     return {
-                        id: data.user.id,
-                        username: data.user.username,
-                        email: data.user.email,
-                        token: data.token
+                        id: data.data.user.id,
+                        username: data.data.user.username,
+                        email: data.data.user.email,
+                        token: data.data.token
                     };
                 }
             }
@@ -663,7 +669,7 @@ const checkUserExists = PerformanceUtils.debounce(async function(username) {
             
             if (response.ok) {
                 const data = await response.json();
-                const exists = data.exists;
+                const exists = data.data ? data.data.exists : false;
                 PerformanceUtils.apiCache.set(cacheKey, exists);
                 return exists;
             } else {
@@ -700,7 +706,7 @@ async function createUser(username, email, password) {
             
             const startTime = Date.now();
             const response = await PerformanceUtils.retryRequest(async () => {
-                return await fetch(`${API_CONFIG.baseURL}/users`, {
+                return await fetch(`${API_CONFIG.baseURL}/register`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -721,13 +727,13 @@ async function createUser(username, email, password) {
                 if (data.success) {
                     // 清除相关缓存
                     PerformanceUtils.apiCache.delete(`user_exists_${username}`);
-                    console.log('维格表创建用户成功:', data);
+                    console.log('Supabase创建用户成功:', data);
                     return {
                         success: true,
                         user: {
-                            id: data.user.id,
-                            username: data.user.username,
-                            email: data.user.email
+                            id: data.data.user.id,
+                            username: data.data.user.username,
+                            email: data.data.user.email
                         }
                     };
                 }

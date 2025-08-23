@@ -6,6 +6,7 @@ const axios = require('axios');
 
 // 导入自定义模块
 const { callVika, detectScheduleFieldKeys, checkUserExists, getShopData, VIKA_CONFIG } = require('./utils/vikaApi');
+const { SupabaseUserService } = require('../utils/supabase');
 const { schemas, validateInput, sanitizeInput } = require('./middleware/validation');
 const { responseFormatter } = require('./middleware/response');
 const { generalLimiter, authLimiter, registerLimiter, helmetConfig } = require('./middleware/security');
@@ -20,6 +21,7 @@ const {
 } = require('./middleware/performance');
 const { userCacheOps, scheduleCacheOps } = require('./utils/cache');
 require('dotenv').config();
+require('dotenv').config({ path: '../.env.supabase' });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -80,15 +82,15 @@ function toYMD(v) {
 
 
 // 用户注册接口（优化版）
-app.post('/api/register', registerLimiter, validateInput(schemas.registration), async (req, res) => {
+app.post('/api/register', registerLimiter, sanitizeInput, validateInput(schemas.registration), async (req, res) => {
     // 处理用户注册请求
     try {
         const { username, email, password } = req.body;
         
         // 检查用户是否已存在
-        const existingUser = await checkUserExists(username, email);
+        const existingUser = await SupabaseUserService.checkUserExists(username);
         if (existingUser) {
-            return res.apiError('用户名或邮箱已存在', 409);
+            return res.apiError('用户名已存在', 409);
         }
         
         // 密码加密（增强安全性）
@@ -101,32 +103,41 @@ app.post('/api/register', registerLimiter, validateInput(schemas.registration), 
             email: email ? email.trim().toLowerCase() : '',
             password: hashedPassword,
             created_at: new Date().toISOString(),
-            status: 'active',
-            loginAttempts: 0,
-            lockedUntil: null
+            is_active: true
         };
         
-        // 调用维格表API创建用户
-        const result = await callVika('POST', `/datasheets/${VIKA_CONFIG.datasheetId}/records`, {
-            records: [{ fields: userData }]
-        });
+        // 使用Supabase创建用户
+        const createdUser = await SupabaseUserService.createUser(userData);
         
-        if (!result.success) {
+        if (!createdUser) {
             throw new Error('创建用户记录失败');
         }
         
+        // 生成JWT token
+        const token = jwt.sign(
+            { 
+                userId: createdUser.id,
+                username: username 
+            },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+        
         // 用户创建成功
         res.apiSuccess({
-            username: userData.username,
-            email: userData.email,
-            createdAt: userData.created_at
+            user: {
+                id: createdUser.id,
+                username: userData.username,
+                email: userData.email
+            },
+            token: token
         }, '用户注册成功');
         
     } catch (error) {
         console.error('注册失败:', error);
         
         // 根据错误类型返回不同的响应
-        if (error.code === 'VIKA_API_ERROR') {
+        if (error.code === 'SUPABASE_ERROR') {
             return res.apiError('数据库连接失败，请稍后重试', 503, error);
         }
         
@@ -142,83 +153,51 @@ app.post('/api/login', authLimiter, validateInput(schemas.login), async (req, re
         const { username, password } = req.body;
         
         // 获取用户信息
-        const filter = encodeURIComponent(`{username} = "${username}"`);
-        const response = await callVika('GET', `/datasheets/${VIKA_CONFIG.datasheetId}/records?fieldKey=name&filterByFormula=${filter}`);
+        const user = await SupabaseUserService.getUserByUsername(username);
         
-        if (!response.success) {
+        if (!user) {
             return res.apiError('用户名或密码错误', 401);
         }
         
-        // 处理嵌套的数据结构
-        const records = response.data?.data?.records || response.data?.records;
-        if (!Array.isArray(records) || records.length === 0) {
-            return res.apiError('用户名或密码错误', 401);
-        }
-        
-        const userRecord = records[0];
-        const userFields = userRecord.fields;
-        
-        // 检查账户是否被锁定
-        if (userFields.lockedUntil && new Date(userFields.lockedUntil) > new Date()) {
-            return res.apiError('账户已被锁定，请稍后再试', 423);
+        // 检查账户是否激活
+        if (!user.is_active) {
+            return res.apiError('账户已被禁用，请联系管理员', 423);
         }
         
         // 验证密码
-        const isPasswordValid = await bcrypt.compare(password, userFields.password);
+        const isPasswordValid = await bcrypt.compare(password, user.password);
         
         if (isPasswordValid) {
-            // 登录成功，重置登录尝试次数
-            await callVika('PATCH', `/datasheets/${VIKA_CONFIG.datasheetId}/records`, {
-                records: [{
-                    recordId: userRecord.recordId,
-                    fields: {
-                        loginAttempts: 0,
-                        lockedUntil: null,
-                        lastLogin: new Date().toISOString()
-                    }
-                }]
-            });
+            // 登录成功，更新最后登录时间
+            try {
+                await SupabaseUserService.updateUser(username, {
+                    last_login: new Date().toISOString()
+                });
+            } catch (updateError) {
+                console.error('更新最后登录时间失败:', updateError);
+                // 即使更新失败，也不影响登录成功
+            }
             
             // 生成JWT token
             const token = jwt.sign(
                 { 
-                    id: userRecord.recordId,
-                    username: userFields.username,
-                    email: userFields.email
+                    userId: user.id,
+                    username: user.username,
+                    email: user.email
                 },
                 JWT_SECRET,
                 { expiresIn: '24h' }
             );
             
             res.apiSuccess({
-                id: userRecord.recordId,
-                username: userFields.username,
-                email: userFields.email,
+                id: user.id,
+                username: user.username,
+                email: user.email,
                 token: token
             }, '登录成功');
         } else {
-            // 登录失败，增加尝试次数
-            const attempts = (userFields.loginAttempts || 0) + 1;
-            const maxAttempts = 5;
-            const lockDuration = 30 * 60 * 1000; // 30分钟
-            
-            const updateFields = { loginAttempts: attempts };
-            if (attempts >= maxAttempts) {
-                updateFields.lockedUntil = new Date(Date.now() + lockDuration).toISOString();
-            }
-            
-            await callVika('PATCH', `/datasheets/${VIKA_CONFIG.datasheetId}/records`, {
-                records: [{
-                    recordId: userRecord.recordId,
-                    fields: updateFields
-                }]
-            });
-            
-            if (attempts >= maxAttempts) {
-                return res.apiError('登录失败次数过多，账户已被锁定30分钟', 423);
-            }
-            
-            return res.apiError(`用户名或密码错误，还有${maxAttempts - attempts}次尝试机会`, 401);
+            // 登录失败
+            return res.apiError('用户名或密码错误', 401);
         }
         
     } catch (error) {
@@ -313,7 +292,7 @@ app.get('/api/users/check/:username', async (req, res) => {
             return res.apiError('用户名长度不能超过20个字符', 400);
         }
         
-        const userRecord = await checkUserExists(username.trim());
+        const userRecord = await SupabaseUserService.checkUserExists(username.trim());
         const exists = !!userRecord;
         
         return res.apiSuccess({ exists }, '检查完成');
@@ -321,7 +300,7 @@ app.get('/api/users/check/:username', async (req, res) => {
     } catch (e) {
         console.error('检查用户失败:', e);
         
-        if (e.code === 'VIKA_API_ERROR') {
+        if (e.code === 'SUPABASE_ERROR') {
             return res.apiError('数据库连接失败，请稍后重试', 503, e);
         }
         
@@ -951,12 +930,14 @@ app.delete('/api/shops/:id', authenticateToken, async (req, res) => {
 });
 
 app.listen(PORT, async () => {
-    // 服务器启动完成
+    console.log(`🚀 服务器已启动，运行在端口 ${PORT}`);
+    console.log(`📊 健康检查: http://localhost:${PORT}/api/health`);
     
     // 启动时预热缓存
     try {
         await cacheWarmup();
+        console.log('✅ 缓存预热完成');
     } catch (error) {
-        // 缓存预热失败不影响服务启动
+        console.log('⚠️ 缓存预热失败，但不影响服务启动');
     }
 });
