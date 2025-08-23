@@ -554,7 +554,7 @@ async function handleRegister(e) {
         // 创建新用户
         const result = await createUser(username, email, password);
         
-        if (result && (result.ok || result.success)) {
+        if (result && result.success) {
             // 清空表单
             document.getElementById('regUsername').value = '';
             document.getElementById('regEmail').value = '';
@@ -736,6 +736,12 @@ async function createUser(username, email, password) {
                             email: data.user.email
                         },
                         token: data.token
+                    };
+                } else {
+                    // 响应成功但业务逻辑失败
+                    return {
+                        success: false,
+                        message: data.message || '注册失败'
                     };
                 }
             }
