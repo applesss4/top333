@@ -732,15 +732,27 @@ async function createUser(username, email, password) {
                     // 清除相关缓存
                     PerformanceUtils.apiCache.delete(`user_exists_${username}`);
                     console.log('Supabase创建用户成功:', data);
-                    return {
-                        success: true,
-                        user: {
-                            id: data.user.id,
-                            username: data.user.username,
-                            email: data.user.email
-                        },
-                        token: data.token
-                    };
+                    // 处理两种可能的数据结构：data.data.user 或 data.user
+                    const userData = data.data?.user || data.user;
+                    const tokenData = data.data?.token || data.token;
+                    
+                    if (userData && userData.id) {
+                        return {
+                            success: true,
+                            user: {
+                                id: userData.id,
+                                username: userData.username,
+                                email: userData.email
+                            },
+                            token: tokenData
+                        };
+                    } else {
+                        console.error('用户数据格式错误:', data);
+                        return {
+                            success: false,
+                            message: '用户数据格式错误'
+                        };
+                    }
                 } else {
                     // 响应成功但业务逻辑失败
                     return {
