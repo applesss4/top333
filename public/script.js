@@ -610,10 +610,10 @@ async function validateUser(username, password) {
                 const data = await response.json();
                 if (data.success) {
                     return {
-                        id: data.data.user.id,
-                        username: data.data.user.username,
-                        email: data.data.user.email,
-                        token: data.data.token
+                        id: data.user.id,
+                        username: data.user.username,
+                        email: data.user.email,
+                        token: data.token
                     };
                 }
             }
@@ -669,7 +669,7 @@ const checkUserExists = PerformanceUtils.debounce(async function(username) {
             
             if (response.ok) {
                 const data = await response.json();
-                const exists = data.data ? data.data.exists : false;
+                const exists = data.exists || false;
                 PerformanceUtils.apiCache.set(cacheKey, exists);
                 return exists;
             } else {
@@ -731,10 +731,11 @@ async function createUser(username, email, password) {
                     return {
                         success: true,
                         user: {
-                            id: data.data.user.id,
-                            username: data.data.user.username,
-                            email: data.data.user.email
-                        }
+                            id: data.user.id,
+                            username: data.user.username,
+                            email: data.user.email
+                        },
+                        token: data.token
                     };
                 }
             }
