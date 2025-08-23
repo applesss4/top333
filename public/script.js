@@ -609,12 +609,21 @@ async function validateUser(username, password) {
             if (response.ok) {
                 const data = await response.json();
                 if (data.success) {
-                    return {
-                        id: data.user.id,
-                        username: data.user.username,
-                        email: data.user.email,
-                        token: data.token
-                    };
+                    // 处理两种可能的数据结构：data.data.user 或 data.user
+                    const userData = data.data?.user || data.user;
+                    const tokenData = data.data?.token || data.token;
+                    
+                    if (userData && userData.id) {
+                        return {
+                            id: userData.id,
+                            username: userData.username,
+                            email: userData.email,
+                            token: tokenData
+                        };
+                    } else {
+                        console.error('用户数据格式错误:', data);
+                        return null;
+                    }
                 } else {
                     // 响应成功但业务逻辑失败
                     console.log('登录失败:', data.message || '用户名或密码错误');
