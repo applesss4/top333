@@ -227,12 +227,7 @@ const performanceMonitor = (req, res, next) => {
         
         // 记录性能指标
         if (process.env.NODE_ENV === 'development') {
-            console.log('请求性能:', {
-                method: req.method,
-                url: req.originalUrl,
-                duration: `${duration}ms`,
-                status: res.statusCode
-            });
+            // 记录请求性能数据
         }
     });
     

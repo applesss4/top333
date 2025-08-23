@@ -79,7 +79,7 @@ async function cachedFetch(url, options = {}) {
     if (!options.method || options.method.toUpperCase() === 'GET') {
         const cached = apiCache.get(cacheKey);
         if (cached) {
-            console.log('🎯 使用缓存数据:', url);
+            // 使用缓存数据
             return Promise.resolve(cached);
         }
     }
@@ -109,7 +109,7 @@ class RequestDeduplicator {
     async request(key, requestFn) {
         // 如果已有相同请求在进行中，返回该请求的Promise
         if (this.pendingRequests.has(key)) {
-            console.log('🔄 请求去重:', key);
+            // 请求去重处理
             return this.pendingRequests.get(key);
         }
 
@@ -153,7 +153,7 @@ async function retryRequest(requestFn, maxRetries = 3, baseDelay = 1000) {
             
             // 指数退避延迟
             const delay = baseDelay * Math.pow(2, attempt) + Math.random() * 1000;
-            console.log(`⏳ 请求失败，${delay}ms后重试 (${attempt + 1}/${maxRetries})`);
+            // 请求失败，准备重试
             await new Promise(resolve => setTimeout(resolve, delay));
         }
     }

@@ -157,7 +157,7 @@ async function checkUserExists(username, email = null) {
         
         // 使用缓存包装器
         return await userCacheOps.checkExists(trimmedUsername, async () => {
-            console.log('正在检查用户是否存在:', { username: trimmedUsername, email });
+            // 检查用户是否存在
             
             // 构建查询条件
             let filterFormula;
@@ -168,15 +168,14 @@ async function checkUserExists(username, email = null) {
             }
             
             const encodedFilter = encodeURIComponent(filterFormula);
-            console.log('查询条件:', filterFormula);
-            console.log('编码后的查询条件:', encodedFilter);
+            // 构建查询条件
             
             const response = await callVika('GET', 
                 `/datasheets/${VIKA_CONFIG.datasheetId}/records?fieldKey=name&filterByFormula=${encodedFilter}&maxRecords=1`,
                 null, 3, true
             );
             
-            console.log('API响应:', JSON.stringify(response, null, 2));
+            // API响应处理
             
             if (!response.success) {
                 console.error('检查用户存在性失败:', response.error);
@@ -185,8 +184,7 @@ async function checkUserExists(username, email = null) {
             
             const records = response.data?.data?.records || response.data?.records;
             const userExists = records && records.length > 0;
-            console.log('用户存在性检查结果:', userExists);
-            console.log('找到的记录:', records);
+            // 用户存在性检查完成
             
             return userExists ? records[0] : null;
         });

@@ -2,6 +2,11 @@
 // 使用无SDK的简化实现，避免Vercel环境依赖问题
 const safeFetch = (typeof fetch === 'function') ? fetch : require('node-fetch');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { authenticateToken, optionalAuth } = require('./middleware/auth');
+
+// JWT密钥
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // 维格表配置
 const VIKA_CONFIG = {
@@ -174,9 +179,21 @@ module.exports = async (req, res) => {
       const user = userResponse.data.records[0];
       const isPasswordValid = await verifyPassword(password, user.fields.password);
       if (isPasswordValid) {
+        // 生成JWT token
+        const token = jwt.sign(
+          {
+            id: user.recordId,
+            username: user.fields.username,
+            email: user.fields.email
+          },
+          JWT_SECRET,
+          { expiresIn: '24h' }
+        );
+        
         return res.status(200).json({
           success: true,
           message: '登录成功',
+          token,
           user: {
             id: user.recordId,
             username: user.fields.username,

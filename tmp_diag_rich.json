@@ -1,1 +1,0 @@
-{"success":true,"total":11,"sample":[{"recordId":"recBQWTtgaNq3","createdAt":1755579407000,"updatedAt":1755579434000,"fields":{"工作店铺":["300円店"],"工作日期":1755561600000,"开始时间":"12:56","结束时间":"17:56"}}],"env":{"hasToken":true,"hasScheduleId":true,"baseUrl":"https://vika.cn/fusion/v1","runtime":"v24.4.1"},"fieldKeys":["工作店铺","工作日期","开始时间","结束时间"],"hasUsernameField":false}

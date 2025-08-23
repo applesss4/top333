@@ -29,26 +29,9 @@ function updateClock() {
 
 // API配置 - 根据环境动态设置
 const API_CONFIG = {
-    // 检测是否为本地开发环境
-    isDevelopment: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
-    
     get baseURL() {
-        // 允许通过全局变量或 localStorage 覆盖（便于本地联调）
-        const override = (typeof window !== 'undefined' && (window.__API_BASE_URL__ || localStorage.getItem('API_BASE_URL')));
-        if (override) return override;
-        
-        // file:// 场景（直接双击打开 HTML）下无法使用相对路径，默认连接到本地后端 3001 端口
-        if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
-            return 'http://localhost:3001/api';
-        }
-        
-        if (this.isDevelopment) {
-            // 无论前端静态服务端口是多少（如 5500），开发环境默认固定指向本地后端 3001 端口
-            return 'http://localhost:3001/api';
-        } else {
-            // 生产环境使用相对路径，指向无服务器函数
-            return '/api';
-        }
+        // 生产环境使用相对路径，指向无服务器函数
+        return '/api';
     }
 };
 
@@ -478,25 +461,28 @@ async function handleLogin(e) {
         console.log('用户验证结果:', user);
 
         if (user) {
-            // 登录成功，保存用户信息
+            // 登录成功，保存用户信息和JWT token
             const userData = {
                 username: username,
+                email: user.email,
+                id: user.id,
                 loginTime: new Date().toISOString()
             };
-            localStorage.setItem('userData', JSON.stringify(userData));
+            
+            // 使用AuthUtils保存用户信息和JWT token
+            AuthUtils.setCurrentUser(userData);
+            if (user.token) {
+                AuthUtils.setToken(user.token);
+                console.log('JWT token已保存');
+            }
+            
             console.log('用户数据已保存:', userData);
 
             showMessage('登录成功！正在跳转...', 'success');
 
-            // 立即跳转到管理后台页面
+            // 跳转到管理后台页面
             setTimeout(() => {
-                console.log('准备跳转到dashboard');
-                if (API_CONFIG && API_CONFIG.isDevelopment) {
-                    window.location.href = 'dashboard.html';
-                } else {
-                    // 生产环境直接跳转到静态文件，避免 /dashboard 路由在无 vercel.json 时 404
-                    window.location.href = '/dashboard.html';
-                }
+                window.location.href = '/dashboard.html';
             }, 500);
 
             console.log('用户登录成功:', user);
@@ -878,16 +864,4 @@ function showMessage(message, type) {
 }
 
 // 维格表配置说明
-console.log(`
-=== 维格表配置说明 ===
-1. 请访问 https://vika.cn 注册账号
-2. 创建一个新的数据表，包含以下字段：
-   - username (单行文本)
-   - email (单行文本)
-   - password (单行文本)
-   - created_at (单行文本)
-3. 获取API Token和数据表ID
-4. 在script.js文件中替换VIKA_CONFIG中的配置
-
-当前使用本地存储模拟数据库功能
-`);
+// 生产环境配置完成

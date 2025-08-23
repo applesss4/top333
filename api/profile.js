@@ -1,5 +1,6 @@
 // Vercel无服务器函数 - 个人信息管理
 const bcrypt = require('bcryptjs');
+const { authenticateToken, optionalAuth } = require('./middleware/auth');
 
 // 维格表配置
 const VIKA_CONFIG = {
@@ -73,6 +74,13 @@ export default async function handler(req, res) {
       message: '服务器配置错误：缺少维格表配置'
     });
   }
+
+  // JWT认证检查
+  const user = authenticateToken(req, res);
+  if (!user) {
+    return; // 认证失败，已在中间件中返回错误响应
+  }
+  req.user = user; // 将用户信息附加到请求对象
 
   const { method } = req;
   const urlParts = req.url.split('/');

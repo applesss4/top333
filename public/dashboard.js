@@ -9,20 +9,10 @@ let editingShopId = null;
 
 // API配置 - 根据环境动态设置
 const API_CONFIG = {
-    isDevelopment: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
     isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
     get baseURL() {
-        const override = (typeof window !== 'undefined' && (window.__API_BASE_URL__ || localStorage.getItem('API_BASE_URL')));
-        if (override) return override;
-        if (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:') {
-            // 移动端应用使用Vercel部署的API
-            return 'https://top333.vercel.app/api';
-        }
-        if (this.isDevelopment) {
-            return 'http://localhost:3001/api';
-        }
-        // 生产环境使用Vercel部署的API
-        return 'https://top333.vercel.app/api';
+        // 生产环境使用相对路径，指向无服务器函数
+        return '/api';
     }
 };
 
@@ -54,16 +44,10 @@ function detectPlatformAndInitialize() {
     // 更新API_CONFIG
     API_CONFIG.isMobile = isMobile;
     
-    // 如果是移动端应用（通常以file://协议打开），确保使用正确的API地址
+    // 移动端应用或文件协议访问时的处理
     if (isFileProtocol) {
-        console.log('[平台检测] 检测到文件协议访问，可能是移动端应用');
-        localStorage.setItem('API_BASE_URL', 'https://top333.vercel.app/api');
-        console.log('[平台检测] API基础URL已设置为Vercel部署地址');
+        // 文件协议访问，使用生产环境API
     }
-    
-    // 显示当前环境信息
-    console.log(`[平台检测] 当前API基础URL: ${API_CONFIG.baseURL}`);
-    console.log(`[平台检测] 开发环境: ${API_CONFIG.isDevelopment}`);
 }
 
 // 初始化时间选择器
@@ -101,15 +85,17 @@ function initializeTimeSelectors() {
 
 // 初始化页面
 async function initializePage() {
-    // 检查登录状态
-    const userData = localStorage.getItem('userData');
-    if (!userData) {
-        window.location.href = 'index.html';
+    // 检查用户认证状态
+    if (!AuthUtils.isLoggedIn() || AuthUtils.isTokenExpired()) {
+        AuthUtils.logout();
         return;
     }
     
-    currentUser = JSON.parse(userData);
-    document.getElementById('currentUser').textContent = currentUser.username || '管理员';
+    // 获取用户信息
+    currentUser = AuthUtils.getCurrentUser();
+    if (currentUser) {
+        document.getElementById('currentUser').textContent = currentUser.username || '管理员';
+    }
     
     // 加载工作日程数据
     loadScheduleData();
@@ -342,8 +328,7 @@ function handleWindowResize() {
 // 处理退出登录
 function handleLogout() {
     if (confirm('确定要退出登录吗？')) {
-        localStorage.removeItem('userData');
-        window.location.href = 'index.html';
+        AuthUtils.logout();
     }
 }
 
@@ -374,7 +359,7 @@ async function loadScheduleData() {
         const apiUrl = `${API_CONFIG.baseURL}/schedule`;
         console.log(`[调试信息] 请求URL: ${apiUrl}`);
         
-        const response = await fetch(apiUrl);
+        const response = await AuthUtils.fetchWithAuth(apiUrl);
         
         if (!response.ok) {
             const errorText = await response.text();
@@ -689,7 +674,7 @@ async function handleScheduleSubmit(e) {
         
         console.log(`[调试信息] 请求URL: ${url}, 方法: ${method}`);
         
-        response = await fetch(url, {
+        response = await AuthUtils.fetchWithAuth(url, {
             method: method,
             headers: {
                 'Content-Type': 'application/json',
@@ -768,7 +753,7 @@ async function confirmDelete() {
     if (!window.pendingDeleteId) return;
     
     try {
-        const response = await fetch(`${API_CONFIG.baseURL}/schedule?scheduleId=${window.pendingDeleteId}`, {
+        const response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/schedule?scheduleId=${window.pendingDeleteId}`, {
             method: 'DELETE'
         });
         
@@ -1184,7 +1169,7 @@ async function loadProfileData() {
             return;
         }
         
-        const response = await fetch(`${API_CONFIG.baseURL}/profile/${currentUsername}`);
+        const response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/profile/${currentUsername}`);
         
         if (response.ok) {
             const result = await response.json();
@@ -1222,7 +1207,7 @@ async function openBasicInfoModal() {
         }
         
         // 获取基本信息
-        const response = await fetch(`${API_CONFIG.baseURL}/hotel/${currentUsername}`);
+        const response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/hotel/${currentUsername}`);
         
         let username = currentUsername;
         let websiteName = '';
@@ -1291,7 +1276,7 @@ async function handleBasicInfoSubmit(e) {
         submitBtn.disabled = true;
         
         // 更新基本信息
-        const response = await fetch(`${API_CONFIG.baseURL}/hotel/${currentUsername}`, {
+        const response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/hotel/${currentUsername}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
@@ -1311,9 +1296,11 @@ async function handleBasicInfoSubmit(e) {
             document.getElementById('currentUser').textContent = username;
             
             // 更新localStorage中的用户数据
-            const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-            userData.username = username;
-            localStorage.setItem('userData', JSON.stringify(userData));
+            const userData = AuthUtils.getCurrentUser();
+            if (userData) {
+                userData.username = username;
+                AuthUtils.setCurrentUser(userData);
+            }
             
             // 更新全局变量
             if (currentUser) {
@@ -1347,7 +1334,7 @@ async function handleBasicInfoSubmit(e) {
 async function loadShopData() {
     try {
         // 首先尝试从后端API获取店铺数据
-        const response = await fetch(`${API_CONFIG.baseURL}/shops`);
+        const response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/shops`);
         
         if (response.ok) {
             const resultRaw = await response.json();
@@ -1539,7 +1526,7 @@ async function handleShopSubmit(e) {
         
         if (editingShopId) {
             // 编辑现有店铺
-            response = await fetch(`${API_CONFIG.baseURL}/shops/${editingShopId}`, {
+            response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/shops/${editingShopId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1551,7 +1538,7 @@ async function handleShopSubmit(e) {
             });
         } else {
             // 添加新店铺
-            response = await fetch(`${API_CONFIG.baseURL}/shops`, {
+            response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/shops`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -1622,7 +1609,7 @@ async function confirmShopDelete() {
     
     deleteBtn.disabled = true;
     try {
-        const response = await fetch(`${API_CONFIG.baseURL}/shops/${editingShopId}`, {
+        const response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/shops/${editingShopId}`, {
             method: 'DELETE'
         });
         

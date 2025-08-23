@@ -1,6 +1,7 @@
 // Vercel无服务器函数 - 工作日程管理
 // 使用无SDK的简化实现，避免Vercel环境依赖问题
 const safeFetch = (typeof fetch === 'function') ? fetch : require('node-fetch');
+const { authenticateToken, optionalAuth } = require('./middleware/auth');
 
 // 维格表配置
 const VIKA_CONFIG = {
@@ -91,6 +92,18 @@ module.exports = async (req, res) => {
             return u.searchParams.get(name);
         } catch (_) { return undefined; }
     };
+
+    // JWT认证检查（诊断模式除外）
+    const diag = getQueryParam('diag');
+    const isDiagMode = (method === 'GET' && (diag === '1' || diag === 'true'));
+    
+    if (!isDiagMode) {
+        const user = authenticateToken(req, res);
+        if (!user) {
+            return; // 认证失败，已在中间件中返回错误响应
+        }
+        req.user = user; // 将用户信息附加到请求对象
+    }
 
     // 统一解析 JSON 请求体
     const body = await parseJsonBody(req);

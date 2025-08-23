@@ -9,6 +9,7 @@ const { callVika, detectScheduleFieldKeys, checkUserExists, getShopData, VIKA_CO
 const { schemas, validateInput, sanitizeInput } = require('./middleware/validation');
 const { responseFormatter } = require('./middleware/response');
 const { generalLimiter, authLimiter, registerLimiter, helmetConfig } = require('./middleware/security');
+const { authenticateToken, optionalAuth, checkUserPermission } = require('./middleware/auth');
 const { 
     requestDeduplication, 
     responseCompression, 
@@ -23,6 +24,19 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// JWT密钥配置
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+    console.error('警告: 生产环境未设置JWT_SECRET环境变量');
+    process.exit(1);
+}
+
+// 维格表配置检查
+if (!process.env.VIKA_API_TOKEN && process.env.NODE_ENV === 'production') {
+    console.error('警告: 生产环境未设置VIKA_API_TOKEN环境变量');
+    process.exit(1);
+}
+
 
 
 
@@ -32,7 +46,7 @@ const PORT = process.env.PORT || 3001;
 // 中间件配置
 app.use(helmetConfig);
 app.use(cors({
-    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : ['http://localhost:8080', 'http://127.0.0.1:8080'],
+    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization']
@@ -67,7 +81,7 @@ function toYMD(v) {
 
 // 用户注册接口（优化版）
 app.post('/api/register', registerLimiter, validateInput(schemas.registration), async (req, res) => {
-    console.log('收到注册请求:', { username: req.body.username, email: req.body.email });
+    // 处理用户注册请求
     try {
         const { username, email, password } = req.body;
         
@@ -101,7 +115,7 @@ app.post('/api/register', registerLimiter, validateInput(schemas.registration), 
             throw new Error('创建用户记录失败');
         }
         
-        console.log('用户创建成功');
+        // 用户创建成功
         res.apiSuccess({
             username: userData.username,
             email: userData.email,
@@ -128,28 +142,20 @@ app.post('/api/login', authLimiter, validateInput(schemas.login), async (req, re
         const { username, password } = req.body;
         
         // 获取用户信息
-        console.log('登录尝试:', { username });
         const filter = encodeURIComponent(`{username} = "${username}"`);
-        console.log('登录查询条件:', filter);
         const response = await callVika('GET', `/datasheets/${VIKA_CONFIG.datasheetId}/records?fieldKey=name&filterByFormula=${filter}`);
         
-        console.log('登录API响应:', JSON.stringify(response, null, 2));
-        
         if (!response.success) {
-            console.log('登录失败: API响应不成功');
             return res.apiError('用户名或密码错误', 401);
         }
         
         // 处理嵌套的数据结构
         const records = response.data?.data?.records || response.data?.records;
-        console.log('登录找到的记录:', records);
         if (!Array.isArray(records) || records.length === 0) {
-            console.log('登录失败: 未找到用户记录');
             return res.apiError('用户名或密码错误', 401);
         }
         
         const userRecord = records[0];
-        console.log('登录用户记录:', userRecord);
         const userFields = userRecord.fields;
         
         // 检查账户是否被锁定
@@ -158,11 +164,7 @@ app.post('/api/login', authLimiter, validateInput(schemas.login), async (req, re
         }
         
         // 验证密码
-        console.log('开始密码验证...');
-        console.log('输入的密码:', password);
-        console.log('数据库中的哈希密码:', userFields.password);
         const isPasswordValid = await bcrypt.compare(password, userFields.password);
-        console.log('密码验证结果:', isPasswordValid);
         
         if (isPasswordValid) {
             // 登录成功，重置登录尝试次数
@@ -177,10 +179,22 @@ app.post('/api/login', authLimiter, validateInput(schemas.login), async (req, re
                 }]
             });
             
+            // 生成JWT token
+            const token = jwt.sign(
+                { 
+                    id: userRecord.recordId,
+                    username: userFields.username,
+                    email: userFields.email
+                },
+                JWT_SECRET,
+                { expiresIn: '24h' }
+            );
+            
             res.apiSuccess({
                 id: userRecord.recordId,
                 username: userFields.username,
-                email: userFields.email
+                email: userFields.email,
+                token: token
             }, '登录成功');
         } else {
             // 登录失败，增加尝试次数
@@ -317,7 +331,7 @@ app.get('/api/users/check/:username', async (req, res) => {
 
 // ============ 与前端一致的 /api/schedule 路由 ============
 // 诊断与获取列表
-app.get('/api/schedule', async (req, res) => {
+app.get('/api/schedule', optionalAuth, async (req, res) => {
     try {
         const { diag, username, date } = req.query || {};
         
@@ -467,7 +481,7 @@ app.get('/api/schedule', async (req, res) => {
 });
 
 // 创建
-app.post('/api/schedule', validateInput(schemas.schedule), async (req, res) => {
+app.post('/api/schedule', authenticateToken, validateInput(schemas.schedule), async (req, res) => {
     try {
         const { username, workStore, workDate, startTime, endTime, duration, notes } = req.body || {};
         if (!workStore || !workDate || !startTime || !endTime) {
@@ -520,7 +534,7 @@ app.post('/api/schedule', validateInput(schemas.schedule), async (req, res) => {
 });
 
 // 更新
-app.put('/api/schedule/:id', validateInput(schemas.schedule), async (req, res) => {
+app.put('/api/schedule/:id', authenticateToken, validateInput(schemas.schedule), async (req, res) => {
     try {
         const { id } = req.params;
         const { username, workStore, workDate, startTime, endTime, duration, notes } = req.body || {};
@@ -560,7 +574,7 @@ app.put('/api/schedule/:id', validateInput(schemas.schedule), async (req, res) =
 });
 
 // 删除
-app.delete('/api/schedule/:id', async (req, res) => {
+app.delete('/api/schedule/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         if (!id) return res.apiError('工作日程ID缺失', 400);
@@ -579,7 +593,7 @@ app.delete('/api/schedule/:id', async (req, res) => {
 
 // ============ 个人信息管理 API ============
 // 获取个人信息
-app.get('/api/profile/:username', async (req, res) => {
+app.get('/api/profile/:username', authenticateToken, checkUserPermission, async (req, res) => {
     try {
         const { username } = req.params;
         if (!username) {
@@ -609,7 +623,7 @@ app.get('/api/profile/:username', async (req, res) => {
 });
 
 // 更新个人信息
-app.put('/api/profile/:username', validateInput(schemas.profile), async (req, res) => {
+app.put('/api/profile/:username', authenticateToken, checkUserPermission, validateInput(schemas.profile), async (req, res) => {
     try {
         const { username } = req.params;
         const { displayName, welcomeMessage } = req.body;
@@ -651,7 +665,7 @@ app.put('/api/profile/:username', validateInput(schemas.profile), async (req, re
 
 // ============ 酒店信息管理 API ============
 // 获取酒店信息
-app.get('/api/hotel/:username', async (req, res) => {
+app.get('/api/hotel/:username', authenticateToken, checkUserPermission, async (req, res) => {
     try {
         const { username } = req.params;
         if (!username) {
@@ -680,7 +694,7 @@ app.get('/api/hotel/:username', async (req, res) => {
 });
 
 // 更新酒店信息
-app.put('/api/hotel/:username', validateInput(schemas.hotel), async (req, res) => {
+app.put('/api/hotel/:username', authenticateToken, checkUserPermission, validateInput(schemas.hotel), async (req, res) => {
     try {
         const { username } = req.params;
         const { name, description } = req.body;
@@ -727,7 +741,7 @@ app.put('/api/hotel/:username', validateInput(schemas.hotel), async (req, res) =
 
 // ============ 基本信息管理 API（合并个人信息和酒店信息）============
 // 获取基本信息（酒店名称和用户名）
-app.get('/api/basic-info/:username', async (req, res) => {
+app.get('/api/basic-info/:username', authenticateToken, checkUserPermission, async (req, res) => {
     try {
         const { username } = req.params;
         if (!username) {
@@ -760,7 +774,7 @@ app.get('/api/basic-info/:username', async (req, res) => {
 });
 
 // 更新基本信息（酒店名称和用户名）
-app.put('/api/basic-info/:username', async (req, res) => {
+app.put('/api/basic-info/:username', authenticateToken, checkUserPermission, async (req, res) => {
     try {
         const { username } = req.params;
         const { websiteName } = req.body;
@@ -817,7 +831,7 @@ app.put('/api/basic-info/:username', async (req, res) => {
 
 // ============ 店铺数据管理 API ============
 // 获取店铺数据
-app.get('/api/shops', async (req, res) => {
+app.get('/api/shops', authenticateToken, async (req, res) => {
     try {
         const shops = await getShopData();
         res.json({
@@ -836,7 +850,7 @@ app.get('/api/shops', async (req, res) => {
 });
 
 // 创建店铺
-app.post('/api/shops', validateInput(schemas.shop), async (req, res) => {
+app.post('/api/shops', authenticateToken, validateInput(schemas.shop), async (req, res) => {
     try {
         const { name, code } = req.body;
         
@@ -880,7 +894,7 @@ app.post('/api/shops', validateInput(schemas.shop), async (req, res) => {
 });
 
 // 更新店铺
-app.put('/api/shops/:id', validateInput(schemas.shop), async (req, res) => {
+app.put('/api/shops/:id', authenticateToken, validateInput(schemas.shop), async (req, res) => {
     try {
         const { id } = req.params;
         const { name, code } = req.body;
@@ -921,7 +935,7 @@ app.put('/api/shops/:id', validateInput(schemas.shop), async (req, res) => {
 });
 
 // 删除店铺
-app.delete('/api/shops/:id', async (req, res) => {
+app.delete('/api/shops/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         if (!id) return res.apiError('店铺ID缺失', 400);
@@ -937,13 +951,12 @@ app.delete('/api/shops/:id', async (req, res) => {
 });
 
 app.listen(PORT, async () => {
-    console.log(`Server is running on port ${PORT}`);
+    // 服务器启动完成
     
     // 启动时预热缓存
     try {
         await cacheWarmup();
-        console.log('缓存预热完成');
     } catch (error) {
-        console.warn('缓存预热失败:', error.message);
+        // 缓存预热失败不影响服务启动
     }
 });

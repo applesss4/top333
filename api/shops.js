@@ -2,6 +2,7 @@
 // 处理店铺的创建、读取、更新、删除操作
 
 const safeFetch = fetch;
+const { authenticateToken, optionalAuth } = require('./middleware/auth');
 
 const VIKA_CONFIG = {
   apiToken: process.env.VIKA_API_TOKEN,
@@ -60,6 +61,13 @@ module.exports = async (req, res) => {
       message: 'Missing required environment variables' 
     });
   }
+
+  // JWT认证检查
+  const user = authenticateToken(req, res);
+  if (!user) {
+    return; // 认证失败，已在中间件中返回错误响应
+  }
+  req.user = user; // 将用户信息附加到请求对象
 
   try {
     const { query, url } = req;
