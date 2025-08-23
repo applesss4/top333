@@ -1,7 +1,7 @@
 {
   "name": "user-auth-backend",
   "version": "1.0.0",
-  "description": "Backend API for user authentication with Vika integration",
+  "description": "Backend API for user authentication with Supabase integration",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -28,7 +28,7 @@
     "nodejs",
     "express",
     "authentication",
-    "vika",
+    "supabase",
     "api"
   ],
   "author": "",

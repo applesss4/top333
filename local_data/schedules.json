@@ -1,0 +1,20 @@
+[
+  {
+    "username": "test_user",
+    "work_store": ["TEST001"],
+    "work_date": "2023-05-15",
+    "start_time": "09:00",
+    "end_time": "17:00",
+    "duration": 8,
+    "notes": "测试数据"
+  },
+  {
+    "username": "test_user",
+    "work_store": ["TEST002"],
+    "work_date": "2023-05-16",
+    "start_time": "10:00",
+    "end_time": "18:00",
+    "duration": 8,
+    "notes": "测试数据2"
+  }
+]

@@ -1,14 +1,15 @@
-# 用户注册登录系统
+# 工作日程管理系统
 
-一个基于前后端分离架构的用户注册登录系统，支持密码加密和数据持久化。
+一个基于前后端分离架构的工作日程管理系统，支持用户认证、日程管理和店铺管理功能。
 
 ## 功能特性
 
-- ✅ 用户注册功能
-- ✅ 用户登录功能
+- ✅ 用户注册与登录功能
 - ✅ 密码bcrypt加密
 - ✅ 前后端分离架构
-- ✅ 维格表数据存储
+- ✅ Supabase数据存储
+- ✅ 工作日程管理
+- ✅ 店铺信息管理
 - ✅ 响应式UI设计
 - ✅ 表单验证
 - ✅ 用户反馈消息
@@ -25,7 +26,8 @@
 - Node.js
 - Express.js
 - bcrypt (密码加密)
-- 维格表API (数据存储)
+- Supabase (数据存储)
+- JWT (用户认证)
 
 ## 项目结构
 
@@ -55,11 +57,12 @@ npm install
 ```
 
 ### 3. 配置环境变量
-在 `backend/.env` 文件中配置维格表API信息：
+在 `backend/.env` 文件中配置Supabase信息：
 ```
-VIKA_API_TOKEN=your_vika_api_token
-VIKA_DATASHEET_ID=your_datasheet_id
-VIKA_BASE_URL=https://vika.cn/fusion/v1
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+JWT_SECRET=your_jwt_secret
 PORT=3000
 ```
 
@@ -78,16 +81,29 @@ python3 -m http.server 8000
 ### 6. 访问应用
 打开浏览器访问：`http://localhost:8000`
 
-## 维格表配置
+## Supabase配置
 
-1. 访问 [维格表官网](https://vika.cn) 注册账号
-2. 创建新的数据表，包含以下字段：
-   - `username` (单行文本)
-   - `email` (单行文本)
-   - `password` (单行文本)
-   - `created_at` (单行文本)
-3. 获取API Token和数据表ID
+1. 访问 [Supabase官网](https://supabase.com) 注册账号
+2. 创建新项目，并设置以下数据表：
+   - `users` (用户信息)
+   - `schedules` (工作日程)
+   - `shops` (店铺信息)
+3. 获取项目URL和API密钥
 4. 在 `.env` 文件中配置相关信息
+
+## 数据迁移
+
+如果您需要将本地Supabase数据迁移到线上环境，请参考以下步骤：
+
+1. 配置 `.env.online` 文件，设置线上Supabase信息
+2. 运行数据迁移脚本：
+```bash
+node upload-to-online-supabase.js
+```
+3. 验证数据迁移是否成功：
+```bash
+node test-supabase-migration.js
+```
 
 ## API接口
 

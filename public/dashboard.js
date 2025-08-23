@@ -7,7 +7,7 @@ let editingScheduleId = null;
 let shopData = [];
 let editingShopId = null;
 
-// API配置 - 根据环境动态设置
+// API配置 - 使用api-config.js中的配置
 const API_CONFIG = {
     isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
     get baseURL() {
@@ -16,10 +16,10 @@ const API_CONFIG = {
     }
 };
 
-const VIKA_CONFIG = {
-    // 保留业务表名配置（如需要）
-    scheduleTable: 'work_schedule'
-};
+// 使用ApiConfig配置
+if (typeof window.ApiConfig !== 'undefined') {
+    console.log('[配置] 使用Supabase API配置');
+}
 
 // 页面初始化
 document.addEventListener('DOMContentLoaded', async function() {
@@ -356,7 +356,10 @@ async function loadScheduleData() {
         console.log(`[调试信息] 环境检测: 移动端=${API_CONFIG.isMobile}, 开发环境=${API_CONFIG.isDevelopment}`);
         console.log(`[调试信息] API基础URL: ${API_CONFIG.baseURL}`);
         
-        const apiUrl = `${API_CONFIG.baseURL}/schedule`;
+        // 使用ApiConfig获取API路径
+        const apiUrl = window.ApiConfig ? 
+            `${API_CONFIG.baseURL}${window.ApiConfig.getApiPath('schedule')}` : 
+            `${API_CONFIG.baseURL}/schedule`;
         console.log(`[调试信息] 请求URL: ${apiUrl}`);
         
         const response = await AuthUtils.fetchWithAuth(apiUrl);
@@ -1171,7 +1174,9 @@ async function loadProfileData() {
             return;
         }
         
-        const response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/profile/${currentUsername}`);
+        // 使用ApiConfig获取API路径
+        const apiUrl = `${API_CONFIG.baseURL}/profile/${currentUsername}`;
+        const response = await AuthUtils.fetchWithAuth(apiUrl);
         
         if (response.ok) {
             const result = await response.json();
@@ -1341,7 +1346,11 @@ async function handleBasicInfoSubmit(e) {
 async function loadShopData() {
     try {
         // 首先尝试从后端API获取店铺数据
-        const response = await AuthUtils.fetchWithAuth(`${API_CONFIG.baseURL}/shops`);
+        // 使用ApiConfig获取API路径
+        const apiUrl = window.ApiConfig ? 
+            `${API_CONFIG.baseURL}${window.ApiConfig.getApiPath('shops')}` : 
+            `${API_CONFIG.baseURL}/shops`;
+        const response = await AuthUtils.fetchWithAuth(apiUrl);
         
         if (response.ok) {
             const resultRaw = await response.json();

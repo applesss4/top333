@@ -14,7 +14,9 @@ app.use(express.json());
 const mockDatabase = {
     users: [],
     user_profiles: [],
-    user_sessions: []
+    user_sessions: [],
+    schedules: [],
+    shops: []
 };
 
 // 工具函数
@@ -103,7 +105,7 @@ app.get('/api/supabase/diag', (req, res) => {
             connection: 'mock',
             status: 'connected',
             database: 'mock_database',
-            tables: ['users', 'user_profiles', 'user_sessions'],
+            tables: ['users', 'user_profiles', 'user_sessions', 'schedules', 'shops'],
             timestamp: new Date().toISOString()
         }
     });
@@ -431,11 +433,318 @@ app.post('/api/debug/reset', (req, res) => {
     mockDatabase.users = [];
     mockDatabase.user_profiles = [];
     mockDatabase.user_sessions = [];
+    mockDatabase.schedules = [];
+    mockDatabase.shops = [];
     
     res.json({
         success: true,
         message: '模拟数据库已重置'
     });
+});
+
+// 工作日程API
+
+// 获取工作日程
+app.get('/api/schedules', authenticateToken, (req, res) => {
+    try {
+        const { username } = req.user;
+        
+        // 过滤当前用户的日程
+        const userSchedules = mockDatabase.schedules.filter(s => s.username === username);
+        
+        res.json({
+            success: true,
+            data: userSchedules
+        });
+        
+    } catch (error) {
+        console.error('获取日程错误:', error);
+        res.status(500).json({
+            success: false,
+            message: '服务器内部错误'
+        });
+    }
+});
+
+// 创建工作日程
+app.post('/api/schedules', authenticateToken, (req, res) => {
+    try {
+        const { username } = req.user;
+        const { work_store, work_date, start_time, end_time, duration, notes } = req.body;
+        
+        // 验证必填字段
+        if (!work_date || !start_time || !end_time) {
+            return res.status(400).json({
+                success: false,
+                message: '工作日期、开始时间和结束时间为必填项'
+            });
+        }
+        
+        // 创建新日程
+        const newSchedule = {
+            id: generateId(),
+            username,
+            work_store: work_store || [],
+            work_date,
+            start_time,
+            end_time,
+            duration: duration || 0,
+            notes: notes || '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        
+        mockDatabase.schedules.push(newSchedule);
+        
+        res.status(201).json({
+            success: true,
+            message: '工作日程创建成功',
+            data: newSchedule
+        });
+        
+    } catch (error) {
+        console.error('创建日程错误:', error);
+        res.status(500).json({
+            success: false,
+            message: '服务器内部错误'
+        });
+    }
+});
+
+// 更新工作日程
+app.put('/api/schedules/:id', authenticateToken, (req, res) => {
+    try {
+        const { id } = req.params;
+        const { username } = req.user;
+        const { work_store, work_date, start_time, end_time, duration, notes } = req.body;
+        
+        // 查找日程
+        const scheduleIndex = mockDatabase.schedules.findIndex(s => s.id === id && s.username === username);
+        
+        if (scheduleIndex === -1) {
+            return res.status(404).json({
+                success: false,
+                message: '工作日程不存在或无权限修改'
+            });
+        }
+        
+        // 更新日程
+        const schedule = mockDatabase.schedules[scheduleIndex];
+        if (work_store !== undefined) schedule.work_store = work_store;
+        if (work_date !== undefined) schedule.work_date = work_date;
+        if (start_time !== undefined) schedule.start_time = start_time;
+        if (end_time !== undefined) schedule.end_time = end_time;
+        if (duration !== undefined) schedule.duration = duration;
+        if (notes !== undefined) schedule.notes = notes;
+        schedule.updated_at = new Date().toISOString();
+        
+        mockDatabase.schedules[scheduleIndex] = schedule;
+        
+        res.json({
+            success: true,
+            message: '工作日程更新成功',
+            data: schedule
+        });
+        
+    } catch (error) {
+        console.error('更新日程错误:', error);
+        res.status(500).json({
+            success: false,
+            message: '服务器内部错误'
+        });
+    }
+});
+
+// 删除工作日程
+app.delete('/api/schedules/:id', authenticateToken, (req, res) => {
+    try {
+        const { id } = req.params;
+        const { username } = req.user;
+        
+        // 查找日程
+        const scheduleIndex = mockDatabase.schedules.findIndex(s => s.id === id && s.username === username);
+        
+        if (scheduleIndex === -1) {
+            return res.status(404).json({
+                success: false,
+                message: '工作日程不存在或无权限删除'
+            });
+        }
+        
+        // 删除日程
+        mockDatabase.schedules.splice(scheduleIndex, 1);
+        
+        res.json({
+            success: true,
+            message: '工作日程删除成功'
+        });
+        
+    } catch (error) {
+        console.error('删除日程错误:', error);
+        res.status(500).json({
+            success: false,
+            message: '服务器内部错误'
+        });
+    }
+});
+
+// 店铺API
+
+// 获取店铺信息
+app.get('/api/shops', authenticateToken, (req, res) => {
+    try {
+        res.json({
+            success: true,
+            data: mockDatabase.shops
+        });
+        
+    } catch (error) {
+        console.error('获取店铺错误:', error);
+        res.status(500).json({
+            success: false,
+            message: '服务器内部错误'
+        });
+    }
+});
+
+// 创建店铺信息
+app.post('/api/shops', authenticateToken, (req, res) => {
+    try {
+        const { shop_code, shop_name, address, contact_phone, manager, status } = req.body;
+        
+        // 验证必填字段
+        if (!shop_code || !shop_name) {
+            return res.status(400).json({
+                success: false,
+                message: '店铺代码和店铺名称为必填项'
+            });
+        }
+        
+        // 检查店铺代码是否已存在
+        const existingShop = mockDatabase.shops.find(s => s.shop_code === shop_code);
+        
+        if (existingShop) {
+            return res.status(400).json({
+                success: false,
+                message: '店铺代码已存在'
+            });
+        }
+        
+        // 创建新店铺
+        const newShop = {
+            id: generateId(),
+            shop_code,
+            shop_name,
+            address: address || '',
+            contact_phone: contact_phone || '',
+            manager: manager || '',
+            status: status || 'active',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        
+        mockDatabase.shops.push(newShop);
+        
+        res.status(201).json({
+            success: true,
+            message: '店铺信息创建成功',
+            data: newShop
+        });
+        
+    } catch (error) {
+        console.error('创建店铺错误:', error);
+        res.status(500).json({
+            success: false,
+            message: '服务器内部错误'
+        });
+    }
+});
+
+// 更新店铺信息
+app.put('/api/shops/:id', authenticateToken, (req, res) => {
+    try {
+        const { id } = req.params;
+        const { shop_code, shop_name, address, contact_phone, manager, status } = req.body;
+        
+        // 查找店铺
+        const shopIndex = mockDatabase.shops.findIndex(s => s.id === id);
+        
+        if (shopIndex === -1) {
+            return res.status(404).json({
+                success: false,
+                message: '店铺信息不存在'
+            });
+        }
+        
+        // 如果更改了店铺代码，检查是否与其他店铺冲突
+        if (shop_code && shop_code !== mockDatabase.shops[shopIndex].shop_code) {
+            const existingShop = mockDatabase.shops.find(s => s.shop_code === shop_code && s.id !== id);
+            
+            if (existingShop) {
+                return res.status(400).json({
+                    success: false,
+                    message: '店铺代码已存在'
+                });
+            }
+        }
+        
+        // 更新店铺
+        const shop = mockDatabase.shops[shopIndex];
+        if (shop_code !== undefined) shop.shop_code = shop_code;
+        if (shop_name !== undefined) shop.shop_name = shop_name;
+        if (address !== undefined) shop.address = address;
+        if (contact_phone !== undefined) shop.contact_phone = contact_phone;
+        if (manager !== undefined) shop.manager = manager;
+        if (status !== undefined) shop.status = status;
+        shop.updated_at = new Date().toISOString();
+        
+        mockDatabase.shops[shopIndex] = shop;
+        
+        res.json({
+            success: true,
+            message: '店铺信息更新成功',
+            data: shop
+        });
+        
+    } catch (error) {
+        console.error('更新店铺错误:', error);
+        res.status(500).json({
+            success: false,
+            message: '服务器内部错误'
+        });
+    }
+});
+
+// 删除店铺信息
+app.delete('/api/shops/:id', authenticateToken, (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // 查找店铺
+        const shopIndex = mockDatabase.shops.findIndex(s => s.id === id);
+        
+        if (shopIndex === -1) {
+            return res.status(404).json({
+                success: false,
+                message: '店铺信息不存在'
+            });
+        }
+        
+        // 删除店铺
+        mockDatabase.shops.splice(shopIndex, 1);
+        
+        res.json({
+            success: true,
+            message: '店铺信息删除成功'
+        });
+        
+    } catch (error) {
+        console.error('删除店铺错误:', error);
+        res.status(500).json({
+            success: false,
+            message: '服务器内部错误'
+        });
+    }
 });
 
 // 错误处理中间件
@@ -464,6 +773,8 @@ app.listen(PORT, () => {
     console.log(`   - 用户: ${mockDatabase.users.length}`);
     console.log(`   - 资料: ${mockDatabase.user_profiles.length}`);
     console.log(`   - 会话: ${mockDatabase.user_sessions.length}`);
+    console.log(`   - 日程: ${mockDatabase.schedules.length}`);
+    console.log(`   - 店铺: ${mockDatabase.shops.length}`);
     console.log(`\n🔗 可用的 API 端点:`);
     console.log(`   GET  /api/health - 健康检查`);
     console.log(`   GET  /api/supabase/diag - Supabase 诊断`);
@@ -473,6 +784,14 @@ app.listen(PORT, () => {
     console.log(`   POST /api/users/validate - 用户验证`);
     console.log(`   GET  /api/profile/:username - 获取用户资料`);
     console.log(`   PUT  /api/profile/:username - 更新用户资料`);
+    console.log(`   GET  /api/schedules - 获取工作日程`);
+    console.log(`   POST /api/schedules - 创建工作日程`);
+    console.log(`   PUT  /api/schedules/:id - 更新工作日程`);
+    console.log(`   DELETE /api/schedules/:id - 删除工作日程`);
+    console.log(`   GET  /api/shops - 获取店铺信息`);
+    console.log(`   POST /api/shops - 创建店铺信息`);
+    console.log(`   PUT  /api/shops/:id - 更新店铺信息`);
+    console.log(`   DELETE /api/shops/:id - 删除店铺信息`);
     console.log(`   GET  /api/debug/users - 查看所有用户`);
     console.log(`   POST /api/debug/reset - 重置数据库`);
     console.log(`\n💡 提示: 使用 test-supabase-api.js 脚本测试所有功能`);

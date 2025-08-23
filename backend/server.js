@@ -2,11 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const axios = require('axios');
 
 // 导入自定义模块
-const { callVika, detectScheduleFieldKeys, checkUserExists, getShopData, VIKA_CONFIG } = require('./utils/vikaApi');
-const { SupabaseUserService } = require('../utils/supabase');
+const { SupabaseUserService, testConnection } = require('../utils/supabase');
 const { schemas, validateInput, sanitizeInput } = require('./middleware/validation');
 const { responseFormatter } = require('./middleware/response');
 const { generalLimiter, authLimiter, registerLimiter, helmetConfig } = require('./middleware/security');
@@ -33,9 +31,14 @@ if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
     process.exit(1);
 }
 
-// 维格表配置检查
-if (!process.env.VIKA_API_TOKEN && process.env.NODE_ENV === 'production') {
-    console.error('警告: 生产环境未设置VIKA_API_TOKEN环境变量');
+// Supabase配置检查
+if (!process.env.SUPABASE_URL && process.env.NODE_ENV === 'production') {
+    console.error('警告: 生产环境未设置SUPABASE_URL环境变量');
+    process.exit(1);
+}
+
+if (!process.env.SUPABASE_ANON_KEY && process.env.NODE_ENV === 'production') {
+    console.error('警告: 生产环境未设置SUPABASE_ANON_KEY环境变量');
     process.exit(1);
 }
 
@@ -71,133 +74,114 @@ app.post('/api/cache/clear', clearCacheHandler);
 
 // 通用日期格式化：将任意可解析时间值转为 YYYY-MM-DD 字符串
 function toYMD(v) {
-  try {
-    const d = new Date(v);
-    if (Number.isNaN(d.getTime())) return '';
-    return d.toISOString().split('T')[0];
-  } catch (_) {
-    return '';
-  }
+  if (!v) return null;
+  const d = new Date(v);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString().split('T')[0];
 }
 
+// 健康检查
+app.get('/api/health', async (req, res) => {
+  const isSupabaseConnected = await testConnection();
+  res.apiSuccess({
+    status: 'ok',
+    database: isSupabaseConnected ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString()
+  });
+});
 
-// 用户注册接口（优化版）
-app.post('/api/register', registerLimiter, sanitizeInput, validateInput(schemas.registration), async (req, res) => {
-    // 处理用户注册请求
+
+// 用户注册接口
+app.post('/api/register', registerLimiter, validateInput(schemas.registration), async (req, res) => {
     try {
-        const { username, email, password } = req.body;
+        const { username, email, password, phone } = req.body;
         
         // 检查用户是否已存在
-        const existingUser = await SupabaseUserService.checkUserExists(username);
-        if (existingUser) {
-            return res.apiError('用户名已存在', 409);
+        const userExists = await SupabaseUserService.checkUserExists(username);
+        if (userExists) {
+            return res.apiError('用户名已存在', 400);
         }
         
-        // 密码加密（增强安全性）
-        const saltRounds = 12;
-        const hashedPassword = await bcrypt.hash(password, saltRounds);
+        // 加密密码
+        const hashedPassword = await bcrypt.hash(password, 10);
         
-        // 准备用户数据
-        const userData = {
-            username: username.trim(),
-            email: email ? email.trim().toLowerCase() : '',
+        // 创建用户
+        const newUser = await SupabaseUserService.createUser({
+            username,
             password: hashedPassword,
-            created_at: new Date().toISOString(),
-            is_active: true
-        };
-        
-        // 使用Supabase创建用户
-        const createdUser = await SupabaseUserService.createUser(userData);
-        
-        if (!createdUser) {
-            throw new Error('创建用户记录失败');
-        }
+            email,
+            phone
+        });
         
         // 生成JWT token
         const token = jwt.sign(
             { 
-                userId: createdUser.id,
-                username: username 
+                userId: newUser.id, 
+                username: newUser.username 
             },
             JWT_SECRET,
             { expiresIn: '24h' }
         );
         
-        // 用户创建成功
-        res.apiSuccess({
+        return res.apiSuccess({
             user: {
-                id: createdUser.id,
-                username: userData.username,
-                email: userData.email
+                id: newUser.id,
+                username: newUser.username,
+                email: newUser.email,
+                phone: newUser.phone
             },
-            token: token
-        }, '用户注册成功');
+            token
+        }, '注册成功', 201);
         
     } catch (error) {
         console.error('注册失败:', error);
-        
-        // 根据错误类型返回不同的响应
-        if (error.code === 'SUPABASE_ERROR') {
-            return res.apiError('数据库连接失败，请稍后重试', 503, error);
-        }
-        
-        res.apiError('注册失败，请稍后重试', 500, error);
+        return res.apiError('注册失败', 500, error);
     }
 });
 
 
 
-// 用户登录接口（优化版）
+// 用户登录接口
 app.post('/api/login', authLimiter, validateInput(schemas.login), async (req, res) => {
     try {
         const { username, password } = req.body;
         
         // 获取用户信息
         const user = await SupabaseUserService.getUserByUsername(username);
-        
         if (!user) {
             return res.apiError('用户名或密码错误', 401);
         }
         
-        // 检查账户是否激活
-        if (!user.is_active) {
-            return res.apiError('账户已被禁用，请联系管理员', 423);
-        }
-        
         // 验证密码
         const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            return res.apiError('用户名或密码错误', 401);
+        }
         
-        if (isPasswordValid) {
-            // 登录成功，更新最后登录时间
-            try {
-                await SupabaseUserService.updateUser(username, {
-                    last_login: new Date().toISOString()
-                });
-            } catch (updateError) {
-                console.error('更新最后登录时间失败:', updateError);
-                // 即使更新失败，也不影响登录成功
-            }
-            
-            // 生成JWT token
-            const token = jwt.sign(
-                { 
-                    userId: user.id,
-                    username: user.username,
-                    email: user.email
-                },
-                JWT_SECRET,
-                { expiresIn: '24h' }
-            );
-            
-            res.apiSuccess({
+        // 更新最后登录时间
+        await SupabaseUserService.updateUser(username, {
+            last_login: new Date().toISOString()
+        });
+        
+        // 生成JWT token
+        const token = jwt.sign(
+            { 
+                userId: user.id, 
+                username: user.username 
+            },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+        
+        return res.apiSuccess({
+            user: {
                 id: user.id,
                 username: user.username,
                 email: user.email,
-                token: token
-            }, '登录成功');
-        } else {
-            // 登录失败
-            return res.apiError('用户名或密码错误', 401);
+                phone: user.phone
+            },
+            token
+        }, '登录成功');
         }
         
     } catch (error) {

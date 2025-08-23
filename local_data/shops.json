@@ -1,0 +1,18 @@
+[
+  {
+    "shop_code": "TEST001",
+    "shop_name": "测试店铺1",
+    "address": "测试地址1",
+    "contact_phone": "12345678901",
+    "manager": "测试经理1",
+    "status": "active"
+  },
+  {
+    "shop_code": "TEST002",
+    "shop_name": "测试店铺2",
+    "address": "测试地址2",
+    "contact_phone": "12345678902",
+    "manager": "测试经理2",
+    "status": "active"
+  }
+]

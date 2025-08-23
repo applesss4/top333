@@ -6,14 +6,14 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'GET') return res.status(405).json({ ok: false, message: 'Method Not Allowed' });
 
-  // 检查维格表环境变量是否配置
-  const vikaConfigured = !!(process.env.VIKA_API_TOKEN && process.env.VIKA_DATASHEET_ID);
+  // 检查Supabase环境变量是否配置
+  const supabaseConfigured = !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
   
   return res.status(200).json({ 
     ok: true, 
-    message: vikaConfigured ? 'API is working with Vika!' : 'API is working with local storage!', 
+    message: 'API is working with Supabase!', 
     timestamp: new Date().toISOString(),
     runtime: process.version,
-    vikaConfigured: vikaConfigured
+    supabaseConfigured: supabaseConfigured
   });
 };

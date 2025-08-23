@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统升级通知</title>
+    <script src="js/api-config.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        .info-container {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #e8f4f8;
+            border-radius: 6px;
+            border-left: 4px solid #36b9cc;
+        }
+        .success-container {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #edf7ed;
+            border-radius: 6px;
+            border-left: 4px solid #1cc88a;
+        }
+        .button {
+            background-color: #4e73df;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        .button:hover {
+            background-color: #2e59d9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>系统升级通知</h1>
+        
+        <div class="success-container">
+            <h3>🎉 系统已完成升级</h3>
+            <p>系统已完全迁移到Supabase数据库，不再使用维格表。所有数据和功能已成功迁移。</p>
+        </div>
+        
+        <div class="info-container">
+            <h3>当前系统状态</h3>
+            <p>• 数据存储：Supabase</p>
+            <p>• 用户认证：Supabase Auth</p>
+            <p>• API状态：已全部更新</p>
+        </div>
+        
+        <button class="button" id="dashboardButton">返回仪表盘</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const dashboardButton = document.getElementById('dashboardButton');
+            
+            // 返回仪表盘
+            dashboardButton.addEventListener('click', function() {
+                window.location.href = 'dashboard.html';
+            });
+            
+            // 清除本地存储中的API切换设置
+            localStorage.removeItem('useSupabaseApi');
+        });
+    </script>
+</body>
+</html>

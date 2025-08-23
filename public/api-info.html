@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API信息面板</title>
+    <script src="js/api-config.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        .api-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8f4f8;
+            border-radius: 6px;
+            border-left: 4px solid #36b9cc;
+        }
+        .button {
+            background-color: #4e73df;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        .button:hover {
+            background-color: #2e59d9;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>API信息面板</h1>
+        <p>此页面显示当前系统使用的API配置信息。</p>
+        
+        <div class="api-info">
+            <h3>当前API配置</h3>
+            <p>系统当前使用 <strong>Supabase API</strong> 作为数据存储和用户认证服务。</p>
+            <pre id="apiConfig"></pre>
+        </div>
+        
+        <button class="button" id="dashboardButton">返回仪表盘</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const apiConfig = document.getElementById('apiConfig');
+            const dashboardButton = document.getElementById('dashboardButton');
+            
+            // 显示API配置信息
+            apiConfig.textContent = JSON.stringify({
+                schedule: window.ApiConfig.getApiPath('schedule'),
+                shops: window.ApiConfig.getApiPath('shops'),
+                users: window.ApiConfig.getApiPath('users'),
+                auth: window.ApiConfig.getApiPath('auth')
+            }, null, 2);
+            
+            // 返回仪表盘
+            dashboardButton.addEventListener('click', function() {
+                window.location.href = 'dashboard.html';
+            });
+        });
+    </script>
+</body>
+</html>

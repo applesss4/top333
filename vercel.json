@@ -26,7 +26,11 @@
     },
     {
       "source": "/api/shops/(.*)",
-      "destination": "/api/shops"
+      "destination": "/api/shops-supabase"
+    },
+    {
+      "source": "/api/schedule/(.*)",
+      "destination": "/api/schedule-supabase"
     },
     {
       "source": "/dashboard",
