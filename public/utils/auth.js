@@ -69,6 +69,11 @@ class AuthUtils {
 
         return response;
     }
+    
+    // fetchWithAuth作为authenticatedFetch的别名，保持兼容性
+    static async fetchWithAuth(url, options = {}) {
+        return this.authenticatedFetch(url, options);
+    }
 
     // 检查token是否过期
     static isTokenExpired() {

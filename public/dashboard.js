@@ -1164,8 +1164,10 @@ async function loadProfileData() {
         const currentUsername = currentUser?.username;
         if (!currentUsername) {
             console.warn('当前用户信息不存在，使用默认值');
-            document.getElementById('profileUsername').textContent = '管理员';
-            document.getElementById('profileWelcome').textContent = '欢迎使用系统';
+            const profileUsernameEl = document.getElementById('profileUsername');
+            if (profileUsernameEl) profileUsernameEl.textContent = '管理员';
+            const currentUserEl = document.getElementById('currentUser');
+            if (currentUserEl) currentUserEl.textContent = '管理员';
             return;
         }
         
@@ -1176,23 +1178,28 @@ async function loadProfileData() {
             if ((result.ok || result.success) && result.data) {
                 const profileData = result.data;
                 const displayName = profileData.realName || currentUsername || '管理员';
-                document.getElementById('profileUsername').textContent = displayName;
-                document.getElementById('profileWelcome').textContent = `欢迎 ${displayName}`;
-                document.getElementById('currentUser').textContent = displayName;
+                const profileUsernameEl = document.getElementById('profileUsername');
+                if (profileUsernameEl) profileUsernameEl.textContent = displayName;
+                const currentUserEl = document.getElementById('currentUser');
+                if (currentUserEl) currentUserEl.textContent = displayName;
                 return;
             }
         }
         
         // API调用失败时，使用默认值
         console.warn('获取个人信息失败，使用默认值');
-        document.getElementById('profileUsername').textContent = currentUsername || '管理员';
-        document.getElementById('profileWelcome').textContent = '欢迎使用系统';
+        const profileUsernameEl = document.getElementById('profileUsername');
+        if (profileUsernameEl) profileUsernameEl.textContent = currentUsername || '管理员';
+        const currentUserEl = document.getElementById('currentUser');
+        if (currentUserEl) currentUserEl.textContent = currentUsername || '管理员';
         
     } catch (error) {
         console.error('加载个人信息失败:', error);
         // 出错时使用默认值
-        document.getElementById('profileUsername').textContent = currentUser?.username || '管理员';
-        document.getElementById('profileWelcome').textContent = '欢迎使用系统';
+        const profileUsernameEl = document.getElementById('profileUsername');
+        if (profileUsernameEl) profileUsernameEl.textContent = currentUser?.username || '管理员';
+        const currentUserEl = document.getElementById('currentUser');
+        if (currentUserEl) currentUserEl.textContent = currentUser?.username || '管理员';
     }
 }
 
