@@ -29,22 +29,33 @@ async function callVikaAPI(method, endpoint, data = null) {
         options.body = JSON.stringify(data);
     }
 
-    const response = await safeFetch(url, options);
-    const rawText = await response.text();
-    let result;
     try {
-        result = rawText ? JSON.parse(rawText) : {};
-    } catch (_) {
-        result = { raw: rawText };
+        console.log(`调用Vika API: ${method} ${url}`);
+        const response = await safeFetch(url, options);
+        const rawText = await response.text();
+        let result;
+        try {
+            result = rawText ? JSON.parse(rawText) : {};
+        } catch (parseError) {
+            console.error('解析Vika API响应失败:', parseError, 'Raw text:', rawText);
+            result = { raw: rawText };
+        }
+        
+        if (!response.ok) {
+            console.error(`Vika API错误: ${response.status}`, result);
+            const err = new Error(result?.message || result?.msg || result?.code || `Vika API error: ${response.status}`);
+            err.status = response.status;
+            err.details = result;
+            err.url = url;
+            throw err;
+        }
+        
+        console.log(`Vika API成功响应: ${method} ${url}`);
+        return result;
+    } catch (error) {
+        console.error(`Vika API请求失败: ${method} ${url}`, error);
+        throw error;
     }
-    if (!response.ok) {
-        const err = new Error(result?.message || result?.msg || result?.code || `Vika API error: ${response.status}`);
-        err.status = response.status;
-        err.details = result;
-        err.url = url;
-        throw err;
-    }
-    return result;
 }
 
 // 密码加密
@@ -86,6 +97,18 @@ module.exports = async (req, res) => {
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  // 检查必要的环境变量
+  if (!VIKA_CONFIG.apiToken || !VIKA_CONFIG.datasheetId) {
+    console.error('缺少必要的环境变量:', {
+      hasToken: !!VIKA_CONFIG.apiToken,
+      hasDatasheetId: !!VIKA_CONFIG.datasheetId
+    });
+    return res.status(500).json({
+      success: false,
+      error: '服务器配置错误：缺少必要的环境变量'
+    });
   }
 
   // 统一获取查询参数的工具函数（兼容 Vercel/Node 环境）
