@@ -7,10 +7,10 @@ async function testLogin() {
   try {
     console.log('🧪 测试用户登录功能...');
     
-    // 使用之前注册的用户进行登录测试
+    // 使用实际存在的用户进行登录测试
     const testUsers = [
-      { username: 'test17983551', password: 'test123456' },
-      { username: 'test18099843', password: 'test123456' }
+      { username: '11111111', password: 'password123' },
+      { username: 'testuser4', password: 'password123' }
     ];
     
     for (const user of testUsers) {

@@ -1,17 +1,27 @@
 // Supabase 配置和客户端
 const { createClient } = require('@supabase/supabase-js');
+require('dotenv').config({ path: '../.env.supabase' });
 
 // Supabase 配置
 const supabaseUrl = process.env.SUPABASE_URL || 'https://paumgahictuhluhuudws.supabase.co';
 // 后端使用 service_role 密钥以绕过 RLS 策略
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhdW1nYWhpY3R1aGx1aHV1ZHdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU5MTE0NzYsImV4cCI6MjA3MTQ4NzQ3Nn0.caf1r6TUgDyUFSYf3l-AuYyOAUffTzXfI5HV2rcJR_U';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhdW1nYWhpY3R1aGx1aHV1ZHdzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTkxMTQ3NiwiZXhwIjoyMDcxNDg3NDc2fQ.Y2-T7_oae0udT9WbBFDyLw9Q7ctOUCzxzjv4jU3fSzU';
+
+console.log('强制使用 service_role 密钥进行数据库操作');
 
 // 创建 Supabase 客户端
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+console.log('强制使用 service_role 密钥进行数据库操作');
 console.log('Supabase 配置:');
 console.log('- URL:', supabaseUrl);
-console.log('- 使用密钥类型:', supabaseKey.includes('service_role') ? 'service_role' : 'anon');
+// 解码JWT token来检查角色
+try {
+  const payload = JSON.parse(Buffer.from(supabaseKey.split('.')[1], 'base64').toString());
+  console.log('- 使用密钥类型:', payload.role || 'unknown');
+} catch (e) {
+  console.log('- 使用密钥类型: 无法解析');
+}
 
 // 用户相关操作
 class SupabaseUserService {
@@ -84,6 +94,7 @@ class SupabaseUserService {
   // 更新用户信息
   static async updateUser(username, updateData) {
     try {
+      // 首先尝试正常更新
       const { data, error } = await supabase
         .from('users')
         .update(updateData)
@@ -91,6 +102,31 @@ class SupabaseUserService {
         .select();
       
       if (error) {
+        // 如果是触发器相关的updated_at字段错误，尝试添加updated_at字段
+        if (error.message && (error.message.includes('updated_at') || error.code === '42703')) {
+          console.log('检测到updated_at字段问题，尝试添加updated_at字段...');
+          const updateDataWithTimestamp = {
+            ...updateData,
+            updated_at: new Date().toISOString()
+          };
+          
+          // 重试更新，这次包含updated_at字段
+          const { data: retryData, error: retryError } = await supabase
+            .from('users')
+            .update(updateDataWithTimestamp)
+            .eq('username', username)
+            .select();
+            
+          if (retryError) {
+            throw retryError;
+          }
+          
+          if (!retryData || retryData.length === 0) {
+            throw new Error('用户不存在或更新失败');
+          }
+          
+          return retryData[0];
+        }
         throw error;
       }
       

@@ -20,6 +20,10 @@ const schemas = {
                 'string.min': '密码至少需要6个字符',
                 'string.max': '密码不能超过128个字符',
                 'any.required': '密码是必填项'
+            }),
+        phone: Joi.string().pattern(/^1[3-9]\d{9}$/).allow('').optional()
+            .messages({
+                'string.pattern.base': '请输入有效的手机号码'
             })
     }),
     login: Joi.object({

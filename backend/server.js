@@ -182,7 +182,6 @@ app.post('/api/login', authLimiter, validateInput(schemas.login), async (req, re
             },
             token
         }, '登录成功');
-        }
         
     } catch (error) {
         console.error('登录失败:', error);
